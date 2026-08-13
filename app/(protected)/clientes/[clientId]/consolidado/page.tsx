@@ -87,7 +87,7 @@ export default async function ConsolidadoPage({ params }: { params: Promise<{ cl
     : null;
 
   const totals = aggregateAllocation(withData.map((x) => x.snap!));
-  const assetTable = buildAssetTable(accs.map((a) => ({ account: a, snapshots: a.snapshots }))).slice(0, 14);
+  const assetTable = buildAssetTable(accs.map((a) => ({ account: a, snapshots: a.snapshots })));
   const { compras, ventas } = buildPositionChanges(accs.map((a) => ({ account: a, snapshots: a.snapshots })));
   const evolutionSeries = buildEvolutionSeries(accs);
 
@@ -225,7 +225,7 @@ export default async function ConsolidadoPage({ params }: { params: Promise<{ cl
 
           <div className="mt-4 rounded-[10px] border border-(--line) bg-(--panel) p-5">
             <h3 className="mb-3 font-heading text-base font-semibold text-(--paper)">
-              Posiciones consolidadas <span className="text-[11px] font-normal text-(--muted)">top 14 por valor</span>
+              Posiciones consolidadas <span className="text-[11px] font-normal text-(--muted)">ordenado por valor</span>
             </h3>
             <div className="overflow-x-auto">
               <table className="w-full text-[13px]">

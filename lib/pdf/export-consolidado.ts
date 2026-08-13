@@ -93,7 +93,7 @@ export async function exportConsolidadoToPdf(data: ConsolidadoPdfData) {
   }
   doc.setFont("helvetica", "bold");
   doc.setFontSize(11);
-  doc.text("Posiciones consolidadas (top 14)", 40, y);
+  doc.text("Posiciones consolidadas", 40, y);
   y += 8;
   drawTable(doc, {
     startY: y,
