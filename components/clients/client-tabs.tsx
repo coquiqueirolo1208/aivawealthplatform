@@ -16,10 +16,13 @@ export function ClientTabs({ clientId, accounts }: { clientId: string; accounts:
   const [adding, setAdding] = useState(false);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
 
+  // whitespace-nowrap keeps each tab's full label (the custodian name, for account
+  // tabs) on one line — the tab itself grows to fit it instead of wrapping/clipping,
+  // and the nav's flex-wrap moves whole tabs to the next row when they don't fit.
   function tabClass(active: boolean) {
     return active
-      ? "flex items-center gap-2 rounded-t-lg px-4 py-2.5 text-[13.5px] font-medium"
-      : "flex items-center gap-2 rounded-t-lg px-4 py-2.5 text-[13.5px] font-medium";
+      ? "flex items-center gap-2 rounded-t-lg px-4 py-2.5 text-[13.5px] font-medium whitespace-nowrap"
+      : "flex items-center gap-2 rounded-t-lg px-4 py-2.5 text-[13.5px] font-medium whitespace-nowrap";
   }
 
   const consolidadoActive = pathname === `/clientes/${clientId}` || pathname === `/clientes/${clientId}/consolidado`;
