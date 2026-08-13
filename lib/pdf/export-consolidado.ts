@@ -14,11 +14,34 @@ export interface ConsolidadoPdfData {
   accounts: Array<{ label: string; month: string | null; valor: number | null; mtd: number | null; ytd: number | null }>;
   allocation: Array<{ tipo: string; valor: number }>;
   positions: Array<{ name: string; total: number; mtd: number | null; ytd: number | null }>;
+  /** Signed Supabase Storage URL for the exporting advisor's own logo, if they uploaded one. */
+  logoUrl?: string | null;
+}
+
+/** Fetches the advisor's logo and converts it to a data URL jsPDF's addImage can embed. */
+async function fetchLogoForPdf(url: string): Promise<{ dataUrl: string; format: "PNG" | "JPEG" } | null> {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const blob = await res.blob();
+    const format = blob.type.includes("png") ? "PNG" : blob.type.includes("jpeg") || blob.type.includes("jpg") ? "JPEG" : null;
+    if (!format) return null;
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(blob);
+    });
+    return { dataUrl, format };
+  } catch {
+    return null; // missing/expired logo shouldn't block the export
+  }
 }
 
 export async function exportConsolidadoToPdf(data: ConsolidadoPdfData) {
   const { jsPDF } = await import("jspdf");
   const doc = new jsPDF({ unit: "pt", format: "letter" });
+  const logo = data.logoUrl ? await fetchLogoForPdf(data.logoUrl) : null;
 
   function pageHeader(title: string, subtitle: string) {
     doc.setFillColor(...NAVY);
@@ -102,6 +125,21 @@ export async function exportConsolidadoToPdf(data: ConsolidadoPdfData) {
     colWidths: [220, 120, 80, 80],
     pageHeight: PAGE_H,
   });
+
+  const footerY = PAGE_H - 24;
+  const pageCount = doc.getNumberOfPages();
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    let x = 40;
+    if (logo) {
+      doc.addImage(logo.dataUrl, logo.format, x, footerY - 14, 18, 18, undefined, "FAST");
+      x += 24;
+    }
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(130, 130, 130);
+    doc.text("Powered by AIVA Wealth", x, footerY);
+  }
 
   const filename = `AIVA_${data.clientName.replace(/[^a-zA-Z0-9]+/g, "_")}_${new Date().toISOString().slice(0, 10)}.pdf`;
   doc.save(filename);

@@ -5,6 +5,8 @@ import { getAdvisorClientsWithSnapshots } from "@/lib/queries/portfolio";
 import { getPendingTasksForAdvisor } from "@/lib/queries/tasks";
 import { loadRadarData } from "@/lib/queries/radar";
 import { RadarPanel } from "@/components/office/radar-panel";
+import { AdvisorLogoCard } from "@/components/office/advisor-logo-card";
+import { getAdvisorLogoUrl } from "@/lib/queries/advisor";
 import { clientTrailing12m, latestMonth } from "@/lib/finance";
 import { fmtPct, fmtUSD, pctClass } from "@/lib/format";
 import { markTaskDone } from "@/lib/actions/tasks";
@@ -62,6 +64,7 @@ export default async function OficinaPage() {
 
   const tasks = await getPendingTasksForAdvisor(supabase, user.id);
   const radarData = await loadRadarData(supabase, user.id);
+  const logoUrl = await getAdvisorLogoUrl(supabase, user.id);
 
   return (
     <div>
@@ -117,6 +120,10 @@ export default async function OficinaPage() {
             </div>
           ))
         )}
+      </div>
+
+      <div className="mt-4">
+        <AdvisorLogoCard logoUrl={logoUrl} />
       </div>
     </div>
   );

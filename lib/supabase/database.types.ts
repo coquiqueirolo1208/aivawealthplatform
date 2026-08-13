@@ -9,9 +9,9 @@ export interface Database {
   public: {
     Tables: {
       advisors: {
-        Row: { id: string; name: string; email: string; created_at: string };
-        Insert: { id: string; name?: string; email: string; created_at?: string };
-        Update: { id?: string; name?: string; email?: string; created_at?: string };
+        Row: { id: string; name: string; email: string; created_at: string; logo_path: string | null };
+        Insert: { id: string; name?: string; email: string; created_at?: string; logo_path?: string | null };
+        Update: { id?: string; name?: string; email?: string; created_at?: string; logo_path?: string | null };
         Relationships: [];
       };
       clients: {

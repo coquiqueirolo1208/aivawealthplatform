@@ -80,15 +80,17 @@ export function SiteHeader({
             Cerrar sesión
           </button>
         )}
-        <button
-          type="button"
-          onClick={() => setShowAssistant(true)}
-          className="mt-2 rounded-md border border-(--line) bg-transparent px-4 py-2 text-[13px] font-semibold text-(--paper-dim)"
-          title="Asistente: preguntá sobre research o sobre tu cartera de clientes"
-        >
-          🤖 {t(lang, "research_assistant")}
-        </button>
-        {showAssistant && <IaAdvisorModal onClose={() => setShowAssistant(false)} />}
+        {userEmail && (
+          <button
+            type="button"
+            onClick={() => setShowAssistant(true)}
+            className="mt-2 rounded-md border border-(--line) bg-transparent px-4 py-2 text-[13px] font-semibold text-(--paper-dim)"
+            title="Asistente: preguntá sobre research o sobre tu cartera de clientes"
+          >
+            🤖 {t(lang, "research_assistant")}
+          </button>
+        )}
+        {userEmail && showAssistant && <IaAdvisorModal onClose={() => setShowAssistant(false)} />}
         <select
           value={lang}
           onChange={(e) => changeLang(e.target.value as Language)}

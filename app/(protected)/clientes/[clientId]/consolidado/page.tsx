@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getAdvisorClientsWithSnapshots, type AccountWithSnapshots } from "@/lib/queries/portfolio";
 import { getFunds, getModelPortfolio } from "@/lib/queries/reference";
 import { getBenchmarkLevels } from "@/lib/queries/benchmark";
+import { getAdvisorLogoUrl } from "@/lib/queries/advisor";
 import {
   aggregateAllocation,
   buildAssetTable,
@@ -61,6 +62,8 @@ export default async function ConsolidadoPage({ params }: { params: Promise<{ cl
   const clients = await getAdvisorClientsWithSnapshots(supabase, user.id);
   const client = clients.find((c) => c.id === clientId);
   if (!client) redirect("/clientes");
+
+  const logoUrl = await getAdvisorLogoUrl(supabase, user.id);
 
   const accs = client.accounts;
   const latestByAccount = accs.map((a) => {
@@ -164,6 +167,7 @@ export default async function ConsolidadoPage({ params }: { params: Promise<{ cl
                 })),
                 allocation: Object.entries(totals).map(([tipo, valor]) => ({ tipo, valor })),
                 positions: assetTable.map((r) => ({ name: r.name, total: r.total, mtd: r.mtd, ytd: r.ytd })),
+                logoUrl,
               }}
             />
           </div>
