@@ -20,10 +20,11 @@ export interface ClientWithAccounts {
 }
 
 /**
- * Fetches every client of an advisor together with each account's full snapshot
- * history, in 3 flat queries (clients -> accounts -> snapshots) rather than the
- * original app's N+1 KV scan. Feeds both the Mis Clientes list (latest-month AUM)
- * and Mi Oficina's trailing-12m performers (needs full history).
+ * Fetches every client owned by this advisor, plus every shared demo client
+ * (is_demo = true, regardless of owner), together with each account's full
+ * snapshot history, in 3 flat queries (clients -> accounts -> snapshots) rather
+ * than the original app's N+1 KV scan. Feeds both the Mis Clientes list
+ * (latest-month AUM) and Mi Oficina's trailing-12m performers (needs full history).
  */
 export async function getAdvisorClientsWithSnapshots(
   supabase: SupabaseClient<Database>,
@@ -32,7 +33,7 @@ export async function getAdvisorClientsWithSnapshots(
   const { data: clients, error: clientsError } = await supabase
     .from("clients")
     .select("id, name, is_demo")
-    .eq("advisor_id", advisorId)
+    .or(`advisor_id.eq.${advisorId},is_demo.eq.true`)
     .order("name");
   if (clientsError) throw clientsError;
   if (!clients?.length) return [];

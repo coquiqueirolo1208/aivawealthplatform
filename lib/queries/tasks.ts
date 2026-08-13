@@ -21,7 +21,7 @@ export async function getPendingTasksForAdvisor(
   const { data: clients, error: clientsError } = await supabase
     .from("clients")
     .select("id, name")
-    .eq("advisor_id", advisorId);
+    .or(`advisor_id.eq.${advisorId},is_demo.eq.true`);
   if (clientsError) throw clientsError;
   if (!clients?.length) return [];
 
