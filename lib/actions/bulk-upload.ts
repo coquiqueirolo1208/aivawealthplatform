@@ -1,0 +1,75 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { createClient } from "@/lib/supabase/server";
+
+export interface ExtractedStatement {
+  mes: string;
+  valorActual: number | null;
+  valorInicial: number | null;
+  valorActivos?: number | null;
+  valorPasivos?: number | null;
+  flujosNetos: number | null;
+  flujosNetosYTD: number | null;
+  costosMes?: number | null;
+  rentMTD?: number | null;
+  rentMTDMetodo?: string | null;
+  rentYTD?: number | null;
+  rentYTDMetodo?: string | null;
+  asignacion?: Array<{ tipo: string; valor: number }>;
+  holdings?: Array<{ nombre: string; valor: number; retornoPct: number | null }>;
+  highlights?: string[];
+  movimientos?: string[];
+}
+
+function toSnapshotRow(accountId: string, ex: ExtractedStatement) {
+  return {
+    account_id: accountId,
+    month: ex.mes,
+    valor_actual: ex.valorActual,
+    valor_inicial: ex.valorInicial,
+    valor_activos: ex.valorActivos ?? null,
+    valor_pasivos: ex.valorPasivos ?? null,
+    flujos_netos: ex.flujosNetos,
+    flujos_netos_ytd: ex.flujosNetosYTD,
+    costos_mes: ex.costosMes ?? null,
+    rent_mtd: ex.rentMTD ?? null,
+    rent_mtd_metodo: ex.rentMTDMetodo ?? null,
+    rent_ytd: ex.rentYTD ?? null,
+    rent_ytd_metodo: ex.rentYTDMetodo ?? null,
+    asignacion: ex.asignacion ?? [],
+    holdings: ex.holdings ?? [],
+    highlights: ex.highlights ?? [],
+    movimientos: ex.movimientos ?? [],
+  };
+}
+
+export async function saveExtractedSnapshot(clientId: string, accountId: string, extraction: ExtractedStatement) {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("snapshots")
+    .upsert(toSnapshotRow(accountId, extraction), { onConflict: "account_id,month" });
+  if (error) throw error;
+  revalidatePath(`/clientes/${clientId}`);
+}
+
+export async function createAccountAndSaveSnapshot(
+  clientId: string,
+  custodianName: string,
+  extraction: ExtractedStatement,
+) {
+  const supabase = await createClient();
+  const { data: account, error: accError } = await supabase
+    .from("accounts")
+    .insert({ client_id: clientId, label: custodianName, custodian: custodianName })
+    .select("id")
+    .single();
+  if (accError) throw accError;
+
+  const { error } = await supabase.from("snapshots").upsert(toSnapshotRow(account.id, extraction), {
+    onConflict: "account_id,month",
+  });
+  if (error) throw error;
+  revalidatePath(`/clientes/${clientId}`);
+  return account.id;
+}
