@@ -30,12 +30,6 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
           <SiteHeader initialTheme={theme} userEmail={user?.email ?? null} />
           <SectionNav />
           {children}
-          <div className="mt-6.5 text-center text-[11px] leading-relaxed text-(--muted)">
-            Los datos se extraen automáticamente de los estados de cuenta que subís, usando IA — verificá cifras
-            clave contra el documento original.
-            <br />
-            Plataforma AIVA — datos compartidos entre tus dispositivos, aislados por asesor.
-          </div>
         </div>
       </body>
     </html>
