@@ -5,10 +5,8 @@ import { getAdvisorClientsWithSnapshots } from "@/lib/queries/portfolio";
 import { getPendingTasksForAdvisor } from "@/lib/queries/tasks";
 import { loadRadarData } from "@/lib/queries/radar";
 import { RadarPanel } from "@/components/office/radar-panel";
-import { clientTrailing12m } from "@/lib/finance";
-import { ASSET_TYPES, type AssetType } from "@/lib/constants";
+import { clientTrailing12m, latestMonth } from "@/lib/finance";
 import { fmtPct, fmtUSD, pctClass } from "@/lib/format";
-import { saveAdvisorMetrics } from "@/lib/actions/advisor";
 import { markTaskDone } from "@/lib/actions/tasks";
 
 export default async function OficinaPage() {
@@ -18,22 +16,43 @@ export default async function OficinaPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: metricsRow } = await supabase
-    .from("advisor_metrics")
-    .select("*")
-    .eq("advisor_id", user.id)
-    .maybeSingle();
-  const aum = (metricsRow?.aum as Partial<Record<AssetType, number>>) ?? {};
-  const aumTotal = ASSET_TYPES.reduce((s, t) => s + (aum[t] ?? 0), 0);
-  const aumInicioAno = metricsRow?.aum_inicio_ano ?? null;
-  const aumGrowth = aumInicioAno ? ((aumTotal - aumInicioAno) / aumInicioAno) * 100 : null;
-  const entradasNuevos = metricsRow?.entradas_nuevos_clientes ?? 0;
-  const entradasExistentes = metricsRow?.entradas_clientes_existentes ?? 0;
-  const salidas = metricsRow?.salidas ?? 0;
-  const entradasTotal = entradasNuevos + entradasExistentes;
-  const flujoNeto = entradasTotal - salidas;
-
   const clients = await getAdvisorClientsWithSnapshots(supabase, user.id);
+
+  // AUM, growth and net flow are all summed straight from client account
+  // snapshots (no more manually-entered office metrics to keep in sync).
+  const aumTotal = clients.reduce((s, c) => s + (clientTrailing12m(c.accounts).aum ?? 0), 0);
+
+  const baselineMonth = new Date().getFullYear() - 1 + "-12";
+  let aumInicioAno = 0;
+  let hasBaseline = false;
+  let flujoNeto = 0;
+  let hasFlujo = false;
+  clients.forEach((c) =>
+    c.accounts.forEach((a) => {
+      const baseSnap = a.snapshots[baselineMonth];
+      if (baseSnap && typeof baseSnap.valorActual === "number") {
+        aumInicioAno += baseSnap.valorActual;
+        hasBaseline = true;
+      }
+      const lm = latestMonth(a.snapshots);
+      const flujosYTD = lm ? a.snapshots[lm].flujosNetosYTD : null;
+      if (typeof flujosYTD === "number") {
+        flujoNeto += flujosYTD;
+        hasFlujo = true;
+      }
+    }),
+  );
+  const aumGrowth = hasBaseline && aumInicioAno !== 0 ? ((aumTotal - aumInicioAno) / aumInicioAno) * 100 : null;
+  const flujoNetoValue = hasFlujo ? flujoNeto : null;
+
+  // Comisiones del trimestre isn't derivable from client/account data at all —
+  // shown as a fixed reference figure from the seeded demo dataset, not editable.
+  const { data: demoMetrics } = await supabase
+    .from("advisor_metrics")
+    .select("comisiones_q")
+    .eq("is_demo", true)
+    .maybeSingle();
+
   const performers = clients
     .map((c) => ({ id: c.id, name: c.name, ...clientTrailing12m(c.accounts) }))
     .filter((p) => p.perf12m != null)
@@ -49,9 +68,13 @@ export default async function OficinaPage() {
       <div className="mb-4 grid grid-cols-[repeat(auto-fit,minmax(155px,1fr))] gap-3">
         <Kpi label="AUM total" value={fmtUSD(aumTotal)} />
         <Kpi label="Crecimiento AUM (vs. inicio de año)" value={fmtPct(aumGrowth)} cls={pctClass(aumGrowth)} />
-        <Kpi label="Comisiones del trimestre" value={fmtUSD(metricsRow?.comisiones_q ?? null)} />
-        <Kpi label="Flujo neto" value={fmtUSD(flujoNeto)} cls={flujoNeto >= 0 ? "pos" : "neg"} />
-        <Kpi label="Clientes" value={String(metricsRow?.n_clientes ?? clients.length)} />
+        <Kpi label="Comisiones del trimestre" value={fmtUSD(demoMetrics?.comisiones_q ?? null)} />
+        <Kpi
+          label="Flujo neto"
+          value={fmtUSD(flujoNetoValue)}
+          cls={flujoNetoValue == null ? undefined : flujoNetoValue >= 0 ? "pos" : "neg"}
+        />
+        <Kpi label="Clientes" value={String(clients.length)} />
       </div>
 
       <div className="mb-4">
@@ -95,32 +118,6 @@ export default async function OficinaPage() {
           ))
         )}
       </div>
-
-      <form action={saveAdvisorMetrics} className="mt-4 rounded-[10px] border border-(--line) bg-(--panel) p-5">
-        <h3 className="mb-3 font-heading text-base font-semibold text-(--paper)">Métricas de la oficina</h3>
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-          {ASSET_TYPES.map((t) => (
-            <MetricField key={t} label={`AUM — ${t}`} name={`aum_${t}`} defaultValue={aum[t]} />
-          ))}
-          <MetricField label="AUM inicio de año" name="aumInicioAno" defaultValue={aumInicioAno} />
-          <MetricField label="Comisiones del trimestre" name="comisionesQ" defaultValue={metricsRow?.comisiones_q} />
-          <MetricField
-            label="Entradas — clientes nuevos"
-            name="entradasNuevosClientes"
-            defaultValue={metricsRow?.entradas_nuevos_clientes}
-          />
-          <MetricField
-            label="Entradas — clientes existentes"
-            name="entradasClientesExistentes"
-            defaultValue={metricsRow?.entradas_clientes_existentes}
-          />
-          <MetricField label="Salidas" name="salidas" defaultValue={metricsRow?.salidas} />
-          <MetricField label="N° de clientes" name="nClientes" defaultValue={metricsRow?.n_clientes} />
-        </div>
-        <button type="submit" className="mt-3.5">
-          Guardar
-        </button>
-      </form>
     </div>
   );
 }
@@ -167,14 +164,5 @@ function PerformersCard({
         ))
       )}
     </div>
-  );
-}
-
-function MetricField({ label, name, defaultValue }: { label: string; name: string; defaultValue?: number | null }) {
-  return (
-    <label className="block">
-      <span className="mb-1 block text-[11px] text-(--muted)">{label}</span>
-      <input type="number" step="any" name={name} defaultValue={defaultValue ?? ""} className="w-full" />
-    </label>
   );
 }

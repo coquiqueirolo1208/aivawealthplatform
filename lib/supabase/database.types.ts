@@ -190,6 +190,7 @@ export interface Database {
           entradas_clientes_existentes: number | null;
           salidas: number | null;
           n_clientes: number | null;
+          is_demo: boolean;
         };
         Insert: {
           advisor_id: string;
@@ -200,6 +201,7 @@ export interface Database {
           entradas_clientes_existentes?: number | null;
           salidas?: number | null;
           n_clientes?: number | null;
+          is_demo?: boolean;
         };
         Update: Partial<Database["public"]["Tables"]["advisor_metrics"]["Insert"]>;
         Relationships: [];
