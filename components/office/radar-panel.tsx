@@ -1,6 +1,5 @@
 import Link from "next/link";
 import type { RadarData } from "@/lib/finance/radar";
-import { fmtUSD } from "@/lib/format";
 
 function ClientLink({ clientId, clientName }: { clientId: string; clientName: string }) {
   return (
@@ -11,14 +10,13 @@ function ClientLink({ clientId, clientName }: { clientId: string; clientName: st
 }
 
 export function RadarPanel({ data }: { data: RadarData }) {
-  const total =
-    data.concentraciones.length + data.atrasos.length + data.riesgo.length + data.tareas.length + data.documentos.length;
+  const total = data.atrasos.length + data.riesgo.length + data.tareas.length + data.documentos.length;
 
   if (total === 0) {
     return (
       <div className="rounded-[10px] border border-(--line) bg-(--panel) p-10 text-center text-[13.5px] text-(--muted)">
-        Todo en orden — no encontramos concentraciones, atrasos, desvíos de riesgo, documentación vencida ni tareas
-        vencidas en ningún cliente. 🎉
+        Todo en orden — no encontramos atrasos, desvíos de riesgo, documentación vencida ni tareas vencidas en
+        ningún cliente. 🎉
       </div>
     );
   }
@@ -104,25 +102,6 @@ export function RadarPanel({ data }: { data: RadarData }) {
               <span className="text-[11px] text-(--paper-dim)">
                 RV actual {r.rvActual.toFixed(1)}% vs objetivo {r.rvTarget.toFixed(1)}% ({r.dev >= 0 ? "+" : ""}
                 {r.dev.toFixed(1)} p.p.)
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {data.concentraciones.length > 0 && (
-        <div className="rounded-[10px] border border-(--line) bg-(--panel) p-5">
-          <h3 className="mb-2 font-heading text-base font-semibold text-(--paper)">
-            Concentraciones <span className="text-[11px] font-normal text-(--muted)">&gt;12% de la cartera del cliente</span> (
-            {data.concentraciones.length})
-          </h3>
-          {data.concentraciones.map((c, i) => (
-            <div key={i} className="mb-1.5 flex flex-wrap items-center justify-between gap-2.5 py-1.5 text-[13px]">
-              <span>
-                <ClientLink clientId={c.clientId} clientName={c.clientName} /> — {c.activo}
-              </span>
-              <span className="text-[11px] text-(--paper-dim)">
-                {c.pct.toFixed(1)}% ({fmtUSD(c.valor)})
               </span>
             </div>
           ))}
