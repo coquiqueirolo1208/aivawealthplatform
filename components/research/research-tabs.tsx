@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const TABS = [
-  ["mercados", "Mercados"],
   ["informe", "Informe Diario"],
   ["portafolios", "Portafolios Modelo"],
   ["soluciones", "Soluciones Investec"],
