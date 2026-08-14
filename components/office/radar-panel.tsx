@@ -28,7 +28,7 @@ export function RadarPanel({ data }: { data: RadarData }) {
       {data.tareas.length > 0 && (
         <div className="rounded-[10px] border p-5" style={{ borderColor: "var(--brick)", background: "var(--panel)" }}>
           <h3 className="mb-2 font-heading text-base font-semibold" style={{ color: "var(--brick)" }}>
-            ⚠ Tareas vencidas ({data.tareas.length})
+            Tareas vencidas ({data.tareas.length})
           </h3>
           {data.tareas.map((t, i) => (
             <div

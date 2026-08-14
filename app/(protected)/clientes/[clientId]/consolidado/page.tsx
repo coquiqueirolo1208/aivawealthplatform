@@ -171,11 +171,24 @@ export default async function ConsolidadoPage({ params }: { params: Promise<{ cl
               }}
             />
           </div>
-          <div className="mb-4 grid grid-cols-[repeat(auto-fit,minmax(155px,1fr))] gap-3">
-            <Kpi label="Patrimonio consolidado" value={fmtUSD(total)} />
-            <Kpi label="Rent. MTD ponderada" value={fmtPct(mtdBlend)} cls={pctClass(mtdBlend)} />
-            <Kpi label="Rent. YTD ponderada" value={fmtPct(ytdBlend)} cls={pctClass(ytdBlend)} />
-            <Kpi label="Cuentas" value={String(accs.length)} />
+          <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-[1.3fr_1fr]">
+            <div className="card-primary p-6">
+              <div className="hero-label">Patrimonio consolidado</div>
+              <div className="hero-number mt-1.5 text-(--paper)">{fmtUSD(total)}</div>
+              <div className="mt-2.5 flex gap-4 font-mono text-[13px] font-semibold">
+                <span style={{ color: pctClass(mtdBlend) === "pos" ? "var(--teal)" : pctClass(mtdBlend) === "neg" ? "var(--brick)" : "var(--paper-dim)" }}>
+                  {fmtPct(mtdBlend)} <span className="font-sans text-[11.5px] font-normal text-(--muted)">MTD</span>
+                </span>
+                <span style={{ color: pctClass(ytdBlend) === "pos" ? "var(--teal)" : pctClass(ytdBlend) === "neg" ? "var(--brick)" : "var(--paper-dim)" }}>
+                  {fmtPct(ytdBlend)} <span className="font-sans text-[11.5px] font-normal text-(--muted)">YTD</span>
+                </span>
+              </div>
+            </div>
+            <div className="rounded-[10px] border border-(--line) bg-(--panel) p-5">
+              <MetricRow label="Rent. MTD ponderada" value={fmtPct(mtdBlend)} cls={pctClass(mtdBlend)} />
+              <MetricRow label="Rent. YTD ponderada" value={fmtPct(ytdBlend)} cls={pctClass(ytdBlend)} />
+              <MetricRow label="Cuentas" value={String(accs.length)} />
+            </div>
           </div>
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-[1.1fr_1fr]">
@@ -347,7 +360,7 @@ export default async function ConsolidadoPage({ params }: { params: Promise<{ cl
           </table>
           {Math.abs(riskDeviation.dev) > 15 && (
             <div className="mt-3 rounded-lg px-3.5 py-2.5 text-[12.5px]" style={{ background: "var(--panel-2)", border: "1px solid var(--brick)", color: "var(--paper-dim)" }}>
-              ⚠ La exposición a Renta Variable se desvía más de 15 puntos porcentuales del perfil declarado.
+              La exposición a Renta Variable se desvía más de 15 puntos porcentuales del perfil declarado.
             </div>
           )}
         </div>
@@ -356,14 +369,14 @@ export default async function ConsolidadoPage({ params }: { params: Promise<{ cl
   );
 }
 
-function Kpi({ label, value, cls }: { label: string; value: string; cls?: string }) {
+function MetricRow({ label, value, cls }: { label: string; value: string; cls?: string }) {
   const color = cls === "pos" ? "var(--teal)" : cls === "neg" ? "var(--brick)" : "var(--paper)";
   return (
-    <div className="rounded-[10px] border border-(--line) bg-(--panel-2) px-4 py-3.5">
-      <div className="mb-1.5 text-[11px] tracking-[0.6px] text-(--muted) uppercase">{label}</div>
-      <div className="font-mono text-xl font-semibold" style={{ color }}>
+    <div className="row-hover flex items-center justify-between border-t border-(--line) py-2.5 first:border-t-0 first:pt-0">
+      <span className="text-[12px] text-(--muted)">{label}</span>
+      <span className="font-mono text-[14px] font-semibold" style={{ color }}>
         {value}
-      </div>
+      </span>
     </div>
   );
 }

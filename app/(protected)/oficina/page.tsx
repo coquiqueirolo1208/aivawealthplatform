@@ -66,18 +66,25 @@ export default async function OficinaPage() {
   const radarData = await loadRadarData(supabase, user.id);
   const logoUrl = await getAdvisorLogoUrl(supabase, user.id);
 
+  const growthCls = pctClass(aumGrowth);
+  const growthColor = growthCls === "pos" ? "var(--teal)" : growthCls === "neg" ? "var(--brick)" : "var(--paper-dim)";
+  const flujoCls = flujoNetoValue == null ? undefined : flujoNetoValue >= 0 ? "pos" : "neg";
+
   return (
     <div>
-      <div className="mb-4 grid grid-cols-[repeat(auto-fit,minmax(155px,1fr))] gap-3">
-        <Kpi label="AUM total" value={fmtUSD(aumTotal)} />
-        <Kpi label="Crecimiento AUM (vs. inicio de año)" value={fmtPct(aumGrowth)} cls={pctClass(aumGrowth)} />
-        <Kpi label="Comisiones del trimestre" value={fmtUSD(demoMetrics?.comisiones_q ?? null)} />
-        <Kpi
-          label="Flujo neto"
-          value={fmtUSD(flujoNetoValue)}
-          cls={flujoNetoValue == null ? undefined : flujoNetoValue >= 0 ? "pos" : "neg"}
-        />
-        <Kpi label="Clientes" value={String(clients.length)} />
+      <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-[1.3fr_1fr]">
+        <div className="card-primary p-6">
+          <div className="hero-label">AUM total</div>
+          <div className="hero-number mt-1.5 text-(--paper)">{fmtUSD(aumTotal)}</div>
+          <div className="mt-2.5 font-mono text-[13px] font-semibold" style={{ color: growthColor }}>
+            {fmtPct(aumGrowth)} <span className="font-sans text-[12px] font-normal text-(--muted)">vs. inicio de año</span>
+          </div>
+        </div>
+        <div className="rounded-[10px] border border-(--line) bg-(--panel) p-5">
+          <MetricRow label="Comisiones del trimestre" value={fmtUSD(demoMetrics?.comisiones_q ?? null)} />
+          <MetricRow label="Flujo neto" value={fmtUSD(flujoNetoValue)} cls={flujoCls} />
+          <MetricRow label="Clientes" value={String(clients.length)} />
+        </div>
       </div>
 
       <div className="mb-4">
@@ -86,8 +93,8 @@ export default async function OficinaPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <PerformersCard title="🏆 Mejores 5 clientes (12 meses)" list={best5} />
-        <PerformersCard title="⚠ Peores 5 clientes (12 meses)" list={worst5} />
+        <PerformersCard title="Mejores 5 clientes (12 meses)" accent="pos" list={best5} />
+        <PerformersCard title="Peores 5 clientes (12 meses)" accent="neg" list={worst5} />
       </div>
 
       <div className="mt-4 rounded-[10px] border border-(--line) bg-(--panel) p-5">
@@ -100,7 +107,7 @@ export default async function OficinaPage() {
           tasks.map((t) => (
             <div
               key={t.id}
-              className="mb-2 flex items-center justify-between rounded-lg px-3.5 py-2.5 text-[12.5px]"
+              className="row-hover mb-2 flex items-center justify-between rounded-lg px-3.5 py-2.5 text-[12.5px]"
               style={{
                 background: "var(--panel-2)",
                 border: `1px solid ${t.due && t.due < new Date().toISOString().slice(0, 10) ? "var(--brick)" : "var(--line)"}`,
@@ -129,14 +136,14 @@ export default async function OficinaPage() {
   );
 }
 
-function Kpi({ label, value, cls }: { label: string; value: string; cls?: string }) {
+function MetricRow({ label, value, cls }: { label: string; value: string; cls?: string }) {
   const color = cls === "pos" ? "var(--teal)" : cls === "neg" ? "var(--brick)" : "var(--paper)";
   return (
-    <div className="rounded-[10px] border border-(--line) bg-(--panel-2) px-4 py-3.5">
-      <div className="mb-1.5 text-[11px] tracking-[0.6px] text-(--muted) uppercase">{label}</div>
-      <div className="font-mono text-xl font-semibold" style={{ color }}>
+    <div className="row-hover flex items-center justify-between border-t border-(--line) py-2.5 first:border-t-0 first:pt-0">
+      <span className="text-[12px] text-(--muted)">{label}</span>
+      <span className="font-mono text-[14px] font-semibold" style={{ color }}>
         {value}
-      </div>
+      </span>
     </div>
   );
 }
@@ -144,12 +151,15 @@ function Kpi({ label, value, cls }: { label: string; value: string; cls?: string
 function PerformersCard({
   title,
   list,
+  accent,
 }: {
   title: string;
   list: Array<{ id: string; name: string; aum: number | null; perf12m: number | null }>;
+  accent: "pos" | "neg";
 }) {
+  const accentColor = accent === "pos" ? "var(--teal)" : "var(--brick)";
   return (
-    <div className="rounded-[10px] border border-(--line) bg-(--panel) p-5">
+    <div className="rounded-[10px] border border-(--line) bg-(--panel) p-5" style={{ borderTop: `2px solid ${accentColor}` }}>
       <h3 className="mb-3 font-heading text-base font-semibold text-(--paper)">{title}</h3>
       {list.length === 0 ? (
         <div className="p-6 text-center text-[13px] text-(--muted)">
@@ -160,7 +170,7 @@ function PerformersCard({
           <Link
             key={p.id}
             href={`/clientes/${p.id}`}
-            className="mb-1.5 flex items-center justify-between rounded-lg px-3.5 py-2.5 text-[12.5px]"
+            className="row-hover mb-1.5 flex items-center justify-between rounded-lg px-3.5 py-2.5 text-[12.5px]"
             style={{ background: "var(--panel-2)", border: "1px solid var(--line)" }}
           >
             <span className="text-(--paper)">{p.name}</span>

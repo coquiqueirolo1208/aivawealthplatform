@@ -33,7 +33,7 @@ export function IaAdvisorModal({ onClose }: { onClose: () => void }) {
     <div className="fixed inset-0 z-[2200] flex items-center justify-center p-5" style={{ background: "rgba(19,31,56,0.65)" }} onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div className="flex max-h-[80vh] w-full max-w-lg flex-col rounded-[10px] p-5" style={{ background: "var(--panel)", border: "1px solid var(--line)" }}>
         <div className="mb-3 flex items-center justify-between">
-          <h3 className="m-0 font-heading text-base font-semibold text-(--paper)">🤖 IA Advisor</h3>
+          <h3 className="m-0 font-heading text-base font-semibold text-(--paper)">IA Advisor</h3>
           <button type="button" className="secondary px-2.5 py-1 text-[11px]" onClick={onClose}>
             Cerrar
           </button>

@@ -6,6 +6,7 @@ import { Line, Bar, Scatter } from "react-chartjs-2";
 import { computeFundRisk } from "@/lib/finance";
 import type { FundRow } from "@/lib/finance/types";
 import { fmtPct } from "@/lib/format";
+import { useChartTheme, chartChrome } from "@/lib/chart-theme";
 
 const COMPARE_COLORS = ["#28466F", "#1F8F6B", "#B15A48", "#6B5C99"];
 const YEAR_LABELS = ["2020", "2021", "2022", "2023", "2024", "2025"] as const;
@@ -27,6 +28,8 @@ function indexPoints(f: FundRow): Array<number | null> {
 }
 
 export function ComparativoFondos({ funds }: { funds: FundRow[] }) {
+  const theme = useChartTheme();
+  const chrome = chartChrome(theme);
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
 
@@ -129,7 +132,11 @@ export function ComparativoFondos({ funds }: { funds: FundRow[] }) {
                         tension: 0.2,
                       })),
                     }}
-                    options={{ plugins: { legend: { display: false } }, maintainAspectRatio: false }}
+                    options={{
+                      plugins: { legend: { display: false }, tooltip: chrome.tooltip },
+                      scales: { x: { grid: chrome.scaleGrid, ticks: chrome.scaleTicks }, y: { grid: chrome.scaleGrid, ticks: chrome.scaleTicks } },
+                      maintainAspectRatio: false,
+                    }}
                   />
                 </div>
               </div>
@@ -141,7 +148,11 @@ export function ComparativoFondos({ funds }: { funds: FundRow[] }) {
                       labels: selectedFunds.map((f) => f.name),
                       datasets: [{ data: selectedFunds.map((f) => f.ytd ?? 0), backgroundColor: COMPARE_COLORS }],
                     }}
-                    options={{ plugins: { legend: { display: false } }, maintainAspectRatio: false }}
+                    options={{
+                      plugins: { legend: { display: false }, tooltip: chrome.tooltip },
+                      scales: { x: { grid: chrome.scaleGrid, ticks: chrome.scaleTicks }, y: { grid: chrome.scaleGrid, ticks: chrome.scaleTicks } },
+                      maintainAspectRatio: false,
+                    }}
                   />
                 </div>
               </div>
@@ -157,7 +168,11 @@ export function ComparativoFondos({ funds }: { funds: FundRow[] }) {
                         pointRadius: 6,
                       })),
                     }}
-                    options={{ maintainAspectRatio: false, plugins: { legend: { position: "bottom" } } }}
+                    options={{
+                      maintainAspectRatio: false,
+                      plugins: { legend: { position: "bottom", labels: chrome.legendLabels }, tooltip: chrome.tooltip },
+                      scales: { x: { grid: chrome.scaleGrid, ticks: chrome.scaleTicks }, y: { grid: chrome.scaleGrid, ticks: chrome.scaleTicks } },
+                    }}
                   />
                 </div>
               </div>

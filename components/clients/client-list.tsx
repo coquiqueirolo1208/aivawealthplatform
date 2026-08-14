@@ -43,7 +43,7 @@ export function ClientList({ clients }: { clients: ClientRow[] }) {
           filtered.map((c) => (
             <div
               key={c.id}
-              className="mb-2 flex items-center justify-between rounded-lg px-3.5 py-3 text-[13px]"
+              className="row-hover mb-2 flex items-center justify-between rounded-lg px-3.5 py-3 text-[13px]"
               style={{ background: "var(--panel-2)", border: "1px solid var(--line)" }}
             >
               <Link href={`/clientes/${c.id}`} className="text-(--paper)">

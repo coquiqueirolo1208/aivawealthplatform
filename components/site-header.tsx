@@ -54,13 +54,14 @@ export function SiteHeader({
   return (
     <header className="top sticky top-0 z-[1000] flex flex-wrap items-end justify-between gap-2.5 border-b border-(--line) bg-(--ink) py-3.5 pb-4.5">
       <div>
-        <Link
-          href="/"
-          className="flex items-center gap-2 font-heading text-[28px] font-semibold tracking-[0.2px] text-(--paper)"
-          title="Ir al inicio"
-        >
+        <Link href="/" className="flex items-center gap-2.5" title="Ir al inicio">
           <LogoMark />
-          Wealth Platform
+          <span className="font-heading text-[26px] tracking-[0.2px]">
+            <span className="font-normal" style={{ color: "var(--slate-secondary)" }}>
+              Wealth
+            </span>{" "}
+            <span className="font-normal text-(--paper)">Platform</span>
+          </span>
         </Link>
         <div className="mt-1 text-[12.5px] tracking-[0.3px] text-(--muted)">
           Reporting patrimonial multi-custodio · asignación, rendimiento y perspectivas
@@ -87,7 +88,7 @@ export function SiteHeader({
             className="mt-2 rounded-md border border-(--line) bg-transparent px-4 py-2 text-[13px] font-semibold text-(--paper-dim)"
             title="Asistente: preguntá sobre research o sobre tu cartera de clientes"
           >
-            🤖 {t(lang, "research_assistant")}
+            {t(lang, "research_assistant")}
           </button>
         )}
         {userEmail && showAssistant && <IaAdvisorModal onClose={() => setShowAssistant(false)} />}

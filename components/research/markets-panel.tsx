@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import "@/lib/chart-setup";
 import { Line } from "react-chartjs-2";
+import { useChartTheme, chartChrome } from "@/lib/chart-theme";
 
 interface MarketRow {
   nombre: string;
@@ -44,6 +45,8 @@ function MiniTable({ title, rows }: { title: string; rows: MarketRow[] }) {
 }
 
 export function MarketsPanel() {
+  const theme = useChartTheme();
+  const chrome = chartChrome(theme);
   const [data, setData] = useState<MarketsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [showRaw, setShowRaw] = useState(false);
@@ -94,8 +97,12 @@ export function MarketsPanel() {
             <h4 className="mb-2 text-[11.5px] font-semibold text-(--paper)">Curva de rendimientos (Tesoro EE.UU.)</h4>
             <div className="relative h-[180px]">
               <Line
-                data={{ labels: data.curva.map((c) => c.plazo), datasets: [{ data: data.curva.map((c) => c.yield), borderColor: "#28466F", tension: 0.3 }] }}
-                options={{ plugins: { legend: { display: false } }, maintainAspectRatio: false }}
+                data={{ labels: data.curva.map((c) => c.plazo), datasets: [{ data: data.curva.map((c) => c.yield), borderColor: theme.accent, backgroundColor: theme.accent + "33", tension: 0.3 }] }}
+                options={{
+                  plugins: { legend: { display: false }, tooltip: chrome.tooltip },
+                  scales: { x: { grid: chrome.scaleGrid, ticks: chrome.scaleTicks }, y: { grid: chrome.scaleGrid, ticks: chrome.scaleTicks } },
+                  maintainAspectRatio: false,
+                }}
               />
             </div>
           </div>

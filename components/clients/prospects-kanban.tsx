@@ -62,7 +62,7 @@ export function ProspectsKanban({ prospects, nowMs }: { prospects: Prospect[]; n
               key={id}
               type="button"
               onClick={() => setOpenStage(id)}
-              className="w-[190px] shrink-0 rounded-lg p-3 text-left"
+              className="row-hover w-[190px] shrink-0 rounded-lg p-3 text-left"
               style={{ background: "var(--panel-2)", border: "1px solid var(--line)" }}
             >
               <div className="mb-2 text-[11px] font-semibold tracking-[0.04em] text-(--muted) uppercase">
@@ -125,7 +125,7 @@ function ProspectStageModal({
           <div className="p-6 text-center text-[13px] text-(--muted)">No hay prospectos en esta etapa.</div>
         ) : (
           prospects.map((p) => (
-            <div key={p.id} className="mb-3 rounded-lg p-3.5 text-[12.5px]" style={{ background: "var(--panel-2)", border: "1px solid var(--line)" }}>
+            <div key={p.id} className="row-hover mb-3 rounded-lg p-3.5 text-[12.5px]" style={{ background: "var(--panel-2)", border: "1px solid var(--line)" }}>
               <div className="mb-1 flex items-center justify-between">
                 <span className="font-semibold text-(--paper)">{p.name}</span>
                 <span className="font-mono text-(--muted)">{p.aumEstimado != null ? fmtUSD(p.aumEstimado) : "—"}</span>

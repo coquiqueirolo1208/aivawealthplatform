@@ -2,6 +2,7 @@
 
 import "@/lib/chart-setup";
 import { Line } from "react-chartjs-2";
+import { useChartTheme, chartChrome } from "@/lib/chart-theme";
 
 export interface EvolutionSeries {
   label: string;
@@ -17,6 +18,8 @@ function monthLabel(m: string) {
 }
 
 export function EvolutionLine({ series }: { series: EvolutionSeries[] }) {
+  const theme = useChartTheme();
+  const chrome = chartChrome(theme);
   const allMonths = Array.from(new Set(series.flatMap((s) => s.points.map((p) => p.x)))).sort();
   if (!allMonths.length) return <div className="empty p-10 text-center text-[13.5px] text-(--muted)">Sin datos.</div>;
   return (
@@ -37,8 +40,14 @@ export function EvolutionLine({ series }: { series: EvolutionSeries[] }) {
           })),
         }}
         options={{
-          plugins: { legend: { display: series.length > 1, position: "bottom" } },
-          scales: { y: { ticks: { callback: (v) => "$" + (Number(v) / 1000).toFixed(0) + "k" } } },
+          plugins: {
+            legend: { display: series.length > 1, position: "bottom", labels: chrome.legendLabels },
+            tooltip: chrome.tooltip,
+          },
+          scales: {
+            x: { grid: chrome.scaleGrid, ticks: chrome.scaleTicks },
+            y: { grid: chrome.scaleGrid, ticks: { ...chrome.scaleTicks, callback: (v) => "$" + (Number(v) / 1000).toFixed(0) + "k" } },
+          },
           maintainAspectRatio: false,
         }}
       />
