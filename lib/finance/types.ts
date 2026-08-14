@@ -26,6 +26,10 @@ export interface Snapshot {
   rentMTDMetodo?: string | null;
   rentYTD?: number | null;
   rentYTDMetodo?: string | null;
+  /** ISO currency code this snapshot's values are denominated in; null/"USD" means no conversion is needed. */
+  moneda?: string | null;
+  /** Units of `moneda` per 1 USD, as used to convert this snapshot — null when moneda is USD. */
+  tipoCambio?: number | null;
   asignacion: AssetAllocationEntry[];
   holdings: Holding[];
   highlights?: string[];

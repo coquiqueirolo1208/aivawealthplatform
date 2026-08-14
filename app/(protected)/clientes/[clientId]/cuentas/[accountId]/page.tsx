@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getAdvisorClientsWithSnapshots } from "@/lib/queries/portfolio";
 import { computeCostsYTD, computeHoldingsWithYTD, computeMTD, computeYTD, latestMonth } from "@/lib/finance";
-import { fmtPct, fmtUSD, pctClass } from "@/lib/format";
+import { fmtCurrency, fmtPct, pctClass } from "@/lib/format";
 import { AllocationDoughnut } from "@/components/charts/allocation-doughnut";
 import { EvolutionLine } from "@/components/charts/evolution-line";
 import { SnapshotForm } from "@/components/clients/snapshot-form";
@@ -48,16 +48,24 @@ export default async function AccountPage({
       ) : snap ? (
         <>
           <div className="mb-4 grid grid-cols-[repeat(auto-fit,minmax(155px,1fr))] gap-3">
-            <Kpi label={`Valor (${selectedMonth})`} value={fmtUSD(snap.valorActual)} />
+            <Kpi label={`Valor (${selectedMonth})`} value={fmtCurrency(snap.valorActual, snap.moneda)} />
             <Kpi label="Rent. MTD" value={fmtPct(mtd.value)} cls={pctClass(mtd.value)} />
             <Kpi label="Rent. YTD" value={fmtPct(ytd.value)} cls={pctClass(ytd.value)} />
-            <Kpi label="Costos YTD" value={costsYtd.value != null ? fmtUSD(costsYtd.value) : "—"} />
+            <Kpi label="Costos YTD" value={costsYtd.value != null ? fmtCurrency(costsYtd.value, snap.moneda) : "—"} />
           </div>
+          {snap.moneda && snap.moneda !== "USD" && (
+            <div className="mb-4 rounded-[10px] border border-(--line) bg-(--panel-2) p-3.5 text-[12.5px] text-(--paper-dim)">
+              Estado de cuenta en {snap.moneda}
+              {snap.tipoCambio
+                ? ` — se convierte a USD en el consolidado a ${snap.tipoCambio.toLocaleString("en-US", { maximumFractionDigits: 2 })} ${snap.moneda}/USD (fin de mes).`
+                : " — no se pudo obtener el tipo de cambio de ese mes, no se está convirtiendo a USD en el consolidado."}
+            </div>
+          )}
           {hasPasivo && (
             <div className="mb-4 rounded-[10px] border border-(--brass-dim) bg-(--panel-2) p-3.5 text-[12.5px] text-(--paper-dim)">
-              Desglose: activos {fmtUSD(snap.valorActivos)} − pasivos (línea de crédito/sobregiro){" "}
-              {fmtUSD(snap.valorPasivos)} = patrimonio neto {fmtUSD(snap.valorActual)}. MTD/YTD se calculan sobre el
-              patrimonio neto.
+              Desglose: activos {fmtCurrency(snap.valorActivos, snap.moneda)} − pasivos (línea de crédito/sobregiro){" "}
+              {fmtCurrency(snap.valorPasivos, snap.moneda)} = patrimonio neto {fmtCurrency(snap.valorActual, snap.moneda)}. MTD/YTD se
+              calculan sobre el patrimonio neto.
             </div>
           )}
 
@@ -102,7 +110,7 @@ export default async function AccountPage({
                     {holdings.map((h) => (
                       <tr key={h.nombre} className="border-t border-(--line)">
                         <td className="py-2 text-(--paper)">{h.nombre}</td>
-                        <td className="text-right font-mono text-(--paper-dim)">{fmtUSD(h.valor)}</td>
+                        <td className="text-right font-mono text-(--paper-dim)">{fmtCurrency(h.valor, snap.moneda)}</td>
                         <td className="text-right font-mono text-(--paper-dim)">{fmtPct(h.retornoPct)}</td>
                         <td className="text-right font-mono text-(--paper-dim)">{fmtPct(h.ytd)}</td>
                       </tr>

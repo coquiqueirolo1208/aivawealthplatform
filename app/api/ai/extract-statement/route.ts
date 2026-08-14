@@ -4,13 +4,16 @@ import { isAnthropicConfigured, callClaude, parseJsonLoose, type AnthropicConten
 const EXTRACTION_SCHEMA_INSTRUCTIONS =
   "Eres un motor de extraccion y calculo financiero. Analiza el estado de cuenta adjunto y devuelve SOLO un JSON " +
   'compacto (sin markdown) con exactamente este esquema: {"custodioDetectado":"string","numeroCuenta":"string_or_null",' +
-  '"mes":"AAAA-MM","valorActual":number,"valorInicial":number,"flujosNetos":number,"valorActivos":number_or_null,' +
+  '"mes":"AAAA-MM","moneda":"USD|ARS|BRL|CLP|COP|MXN|PEN|UYU","valorActual":number,"valorInicial":number,"flujosNetos":number,"valorActivos":number_or_null,' +
   '"valorPasivos":number_or_null,"flujosNetosYTD":number,"costosMes":number_or_null,"rentMTD":number_or_null,' +
   '"rentMTDMetodo":"informado"|"estimado","rentYTD":number_or_null,"rentYTDMetodo":"informado"|"estimado",' +
   '"asignacion":[{"tipo":"Efectivo|Renta Fija|Renta Variable|Fondos Mutuos|Alternativos|Otros","valor":number}],' +
   '"holdings":[{"nombre":"string","valor":number,"retornoPct":number_or_null}],"highlights":["string"],"movimientos":["string"]}. ' +
-  "valorActual y valorInicial son SIEMPRE el patrimonio neto (activos menos pasivos). flujosNetos/flujosNetosYTD son " +
+  "valorActual y valorInicial son SIEMPRE el patrimonio neto (activos menos pasivos), en la moneda del estado de cuenta " +
+  '("moneda" es la moneda en la que estan expresados esos montos, USD si no se indica otra cosa). flujosNetos/flujosNetosYTD son ' +
   "SOLO transferencias externas del cliente, nunca compraventa de valores ni dividendos. Numeros JSON validos, sin comas de miles.";
+
+const MOCK_CURRENCIES = ["USD", "USD", "USD", "ARS", "BRL", "CLP", "COP", "MXN"] as const;
 
 /** Deterministic (not random) mock so repeated calls with the same input are stable. */
 function mockExtraction(accountLabel: string | null, month: string | null, fileName: string) {
@@ -18,10 +21,12 @@ function mockExtraction(accountLabel: string | null, month: string | null, fileN
   for (const ch of fileName + (accountLabel ?? "") + (month ?? "")) seed = (seed * 31 + ch.charCodeAt(0)) % 100000;
   const base = 400000 + (seed % 600000);
   const flujos = seed % 7 === 0 ? 10000 : 0;
+  const moneda = MOCK_CURRENCIES[seed % MOCK_CURRENCIES.length];
   return {
     custodioDetectado: accountLabel ?? "Custodio de ejemplo",
     numeroCuenta: null,
     mes: month ?? new Date().toISOString().slice(0, 7),
+    moneda,
     valorActual: base,
     valorInicial: Math.round(base * 0.98),
     flujosNetos: flujos,

@@ -113,6 +113,7 @@ export interface Database {
           rent_ytd: number | null;
           rent_ytd_metodo: string | null;
           moneda: string | null;
+          tipo_cambio: number | null;
           asignacion: Json;
           holdings: Json;
           highlights: string[];
@@ -134,6 +135,7 @@ export interface Database {
           rent_ytd?: number | null;
           rent_ytd_metodo?: string | null;
           moneda?: string | null;
+          tipo_cambio?: number | null;
           asignacion?: Json;
           holdings?: Json;
           highlights?: string[];

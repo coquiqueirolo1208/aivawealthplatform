@@ -39,6 +39,19 @@ export const KNOWN_CUSTODIANS = [
   "Utmost",
 ] as const;
 
+/** Currencies a monthly snapshot can be entered in. Non-USD values are converted to
+ * USD (using that month's exchange rate) everywhere they're aggregated across accounts. */
+export const CURRENCIES = [
+  { code: "USD", label: "USD — Dólar estadounidense" },
+  { code: "ARS", label: "ARS — Peso argentino" },
+  { code: "BRL", label: "BRL — Real brasileño" },
+  { code: "CLP", label: "CLP — Peso chileno" },
+  { code: "COP", label: "COP — Peso colombiano" },
+  { code: "MXN", label: "MXN — Peso mexicano" },
+  { code: "PEN", label: "PEN — Sol peruano" },
+  { code: "UYU", label: "UYU — Peso uruguayo" },
+] as const;
+
 export const PROSPECT_STAGES = [
   ["nuevo", "Nuevo"],
   ["contactado", "Contactado"],

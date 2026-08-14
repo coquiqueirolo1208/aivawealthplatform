@@ -3,6 +3,7 @@ import type { Database } from "@/lib/supabase/database.types";
 import { getAdvisorClientsWithSnapshots } from "./portfolio";
 import { getModelPortfolio } from "./reference";
 import { buildRadarData, type RadarClientInput, type RadarData } from "@/lib/finance/radar";
+import { toUsdSnapshotsByMonth } from "@/lib/finance/currency";
 
 export async function loadRadarData(supabase: SupabaseClient<Database>, advisorId: string): Promise<RadarData> {
   const clients = await getAdvisorClientsWithSnapshots(supabase, advisorId);
@@ -39,7 +40,9 @@ export async function loadRadarData(supabase: SupabaseClient<Database>, advisorI
   const input: RadarClientInput[] = clients.map((c) => ({
     id: c.id,
     name: c.name,
-    accounts: c.accounts,
+    // Radar's dollar-based checks (risk-deviation weighting, etc.) need every account
+    // in the same currency — convert per snapshot's own month rate before comparing.
+    accounts: c.accounts.map((a) => ({ ...a, snapshots: toUsdSnapshotsByMonth(a.snapshots) })),
     documents: docsByClient.get(c.id) ?? [],
     riskProfile: riskByClient.has(c.id) ? { profile: riskByClient.get(c.id)! } : null,
     tasks: tasksByClient.get(c.id) ?? [],

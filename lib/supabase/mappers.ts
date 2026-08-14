@@ -15,6 +15,8 @@ export function rowToSnapshot(row: Tables<"snapshots">): Snapshot {
     rentMTDMetodo: row.rent_mtd_metodo,
     rentYTD: row.rent_ytd,
     rentYTDMetodo: row.rent_ytd_metodo,
+    moneda: row.moneda,
+    tipoCambio: row.tipo_cambio,
     asignacion: (row.asignacion as unknown as AssetAllocationEntry[]) ?? [],
     holdings: (row.holdings as unknown as Holding[]) ?? [],
     highlights: row.highlights ?? [],

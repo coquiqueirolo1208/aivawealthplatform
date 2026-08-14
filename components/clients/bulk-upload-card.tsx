@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { fmtUSD } from "@/lib/format";
+import { fmtCurrency } from "@/lib/format";
 import { saveExtractedSnapshot, createAccountAndSaveSnapshot, type ExtractedStatement } from "@/lib/actions/bulk-upload";
 
 export interface BulkAccountOption {
@@ -132,10 +132,13 @@ export function BulkUploadCard({ clientId, accounts }: { clientId: string; accou
               <tr key={row.fileName} className="border-t border-(--line)">
                 <td className="py-1.5 text-(--paper)">{row.fileName}</td>
                 <td className="text-(--paper-dim)">
-                  {row.extraction ? `${row.extraction.custodioDetectado ?? "—"} · ${row.extraction.mes}` : "—"}
+                  {row.extraction
+                    ? `${row.extraction.custodioDetectado ?? "—"} · ${row.extraction.mes}` +
+                      (row.extraction.moneda && row.extraction.moneda !== "USD" ? ` · ${row.extraction.moneda}` : "")
+                    : "—"}
                 </td>
                 <td className="text-right font-mono text-(--paper-dim)">
-                  {row.extraction ? fmtUSD(row.extraction.valorActual) : "—"}
+                  {row.extraction ? fmtCurrency(row.extraction.valorActual, row.extraction.moneda) : "—"}
                 </td>
                 <td>
                   {row.status === "ready" ? (

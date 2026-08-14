@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getAdvisorClientsWithSnapshots } from "@/lib/queries/portfolio";
-import { latestMonth } from "@/lib/finance";
+import { latestMonth, toUsdValue } from "@/lib/finance";
 import { getChatReply } from "@/lib/ai/chat";
 
 /** Builds a compact per-client AUM/custodian summary as context — no full holdings dump, to limit token cost and PII exposure. */
@@ -22,7 +22,8 @@ async function buildClientsContext(): Promise<string> {
     for (const acc of c.accounts) {
       if (acc.custodian) custodians.push(acc.custodian);
       const lm = latestMonth(acc.snapshots);
-      const v = lm ? acc.snapshots[lm].valorActual : null;
+      const snap = lm ? acc.snapshots[lm] : null;
+      const v = snap ? toUsdValue(snap.valorActual, snap.moneda, snap.tipoCambio) : null;
       if (v != null) {
         aum += v;
         any = true;

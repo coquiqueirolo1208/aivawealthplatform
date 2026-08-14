@@ -4,6 +4,7 @@ import { useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { saveSnapshotManual, deleteSnapshot } from "@/lib/actions/accounts";
 import type { Snapshot } from "@/lib/finance/types";
+import { CURRENCIES } from "@/lib/constants";
 
 export function SnapshotForm({
   clientId,
@@ -62,10 +63,27 @@ export function SnapshotForm({
 
       <form action={(fd) => saveSnapshotManual(clientId, accountId, fd)} className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <input type="hidden" name="month" value={selectedMonth} />
+        <label className="block">
+          <span className="mb-1 block text-[11px] text-(--muted)">Moneda del estado de cuenta</span>
+          <select name="moneda" defaultValue={existing?.moneda ?? "USD"} className="w-full">
+            {CURRENCIES.map((c) => (
+              <option key={c.code} value={c.code}>
+                {c.label}
+              </option>
+            ))}
+          </select>
+        </label>
         <Field label="Valor actual" name="valorActual" defaultValue={existing?.valorActual} />
         <Field label="Valor inicial del mes" name="valorInicial" defaultValue={existing?.valorInicial} />
         <Field label="Flujos netos (mes)" name="flujosNetos" defaultValue={existing?.flujosNetos} />
         <Field label="Flujos netos YTD" name="flujosNetosYTD" defaultValue={existing?.flujosNetosYTD} />
+        {existing?.moneda && existing.moneda !== "USD" && (
+          <div className="col-span-full text-[11px] text-(--muted)">
+            {existing.tipoCambio
+              ? `Tipo de cambio usado (fin de mes): ${existing.tipoCambio.toLocaleString("en-US", { maximumFractionDigits: 2 })} ${existing.moneda}/USD`
+              : "No se pudo obtener el tipo de cambio de ese mes — los valores no se están convirtiendo a USD en el consolidado."}
+          </div>
+        )}
         <div className="col-span-full flex gap-2">
           <button type="submit" disabled={!selectedMonth}>
             Guardar {selectedMonth || "…"}

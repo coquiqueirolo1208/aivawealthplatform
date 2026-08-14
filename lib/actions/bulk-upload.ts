@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { fetchUsdExchangeRate, lastDayOfMonth } from "@/lib/fx";
 
 export interface ExtractedStatement {
   mes: string;
@@ -16,13 +17,17 @@ export interface ExtractedStatement {
   rentMTDMetodo?: string | null;
   rentYTD?: number | null;
   rentYTDMetodo?: string | null;
+  /** ISO currency code detected in the statement; "USD" or absent means no conversion needed. */
+  moneda?: string | null;
   asignacion?: Array<{ tipo: string; valor: number }>;
   holdings?: Array<{ nombre: string; valor: number; retornoPct: number | null }>;
   highlights?: string[];
   movimientos?: string[];
 }
 
-function toSnapshotRow(accountId: string, ex: ExtractedStatement) {
+async function toSnapshotRow(accountId: string, ex: ExtractedStatement) {
+  const moneda = ex.moneda || "USD";
+  const tipoCambio = moneda === "USD" ? null : await fetchUsdExchangeRate(moneda, lastDayOfMonth(ex.mes));
   return {
     account_id: accountId,
     month: ex.mes,
@@ -37,6 +42,8 @@ function toSnapshotRow(accountId: string, ex: ExtractedStatement) {
     rent_mtd_metodo: ex.rentMTDMetodo ?? null,
     rent_ytd: ex.rentYTD ?? null,
     rent_ytd_metodo: ex.rentYTDMetodo ?? null,
+    moneda,
+    tipo_cambio: tipoCambio,
     asignacion: ex.asignacion ?? [],
     holdings: ex.holdings ?? [],
     highlights: ex.highlights ?? [],
@@ -48,7 +55,7 @@ export async function saveExtractedSnapshot(clientId: string, accountId: string,
   const supabase = await createClient();
   const { error } = await supabase
     .from("snapshots")
-    .upsert(toSnapshotRow(accountId, extraction), { onConflict: "account_id,month" });
+    .upsert(await toSnapshotRow(accountId, extraction), { onConflict: "account_id,month" });
   if (error) throw error;
   revalidatePath(`/clientes/${clientId}`);
 }
@@ -66,7 +73,7 @@ export async function createAccountAndSaveSnapshot(
     .single();
   if (accError) throw accError;
 
-  const { error } = await supabase.from("snapshots").upsert(toSnapshotRow(account.id, extraction), {
+  const { error } = await supabase.from("snapshots").upsert(await toSnapshotRow(account.id, extraction), {
     onConflict: "account_id,month",
   });
   if (error) throw error;

@@ -7,7 +7,7 @@ import { loadRadarData } from "@/lib/queries/radar";
 import { RadarPanel } from "@/components/office/radar-panel";
 import { AdvisorLogoCard } from "@/components/office/advisor-logo-card";
 import { getAdvisorLogoUrl } from "@/lib/queries/advisor";
-import { clientTrailing12m, latestMonth } from "@/lib/finance";
+import { clientTrailing12m, latestMonth, toUsdSnapshotsByMonth } from "@/lib/finance";
 import { fmtPct, fmtUSD, pctClass } from "@/lib/format";
 import { markTaskDone } from "@/lib/actions/tasks";
 
@@ -18,7 +18,13 @@ export default async function OficinaPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const clients = await getAdvisorClientsWithSnapshots(supabase, user.id);
+  const clientsRaw = await getAdvisorClientsWithSnapshots(supabase, user.id);
+  // Every office-wide figure (AUM, growth, flows, performers) is USD — convert each
+  // account's snapshots using their own month's rate before any of it is summed.
+  const clients = clientsRaw.map((c) => ({
+    ...c,
+    accounts: c.accounts.map((a) => ({ ...a, snapshots: toUsdSnapshotsByMonth(a.snapshots) })),
+  }));
 
   // AUM, growth and net flow are all summed straight from client account
   // snapshots (no more manually-entered office metrics to keep in sync).

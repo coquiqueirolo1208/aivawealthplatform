@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { fetchUsdExchangeRate, lastDayOfMonth } from "@/lib/fx";
 
 async function requireSupabase() {
   const supabase = await createClient();
@@ -40,6 +41,9 @@ export async function saveSnapshotManual(clientId: string, accountId: string, fo
     const n = Number(raw);
     return isNaN(n) ? null : n;
   };
+  const moneda = String(formData.get("moneda") ?? "USD") || "USD";
+  const tipoCambio = moneda === "USD" ? null : await fetchUsdExchangeRate(moneda, lastDayOfMonth(month));
+
   const supabase = await requireSupabase();
   const { error } = await supabase.from("snapshots").upsert(
     {
@@ -49,6 +53,8 @@ export async function saveSnapshotManual(clientId: string, accountId: string, fo
       valor_inicial: num("valorInicial"),
       flujos_netos: num("flujosNetos"),
       flujos_netos_ytd: num("flujosNetosYTD"),
+      moneda,
+      tipo_cambio: tipoCambio,
     },
     { onConflict: "account_id,month" },
   );

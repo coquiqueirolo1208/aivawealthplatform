@@ -14,6 +14,7 @@ import {
   currentFingerprint,
   latestMonth,
   refineAssetAllocation,
+  toUsdSnapshotsByMonth,
 } from "@/lib/finance";
 import { ACCOUNT_COLORS } from "@/lib/constants";
 import { fmtPct, fmtUSD, pctClass } from "@/lib/format";
@@ -65,7 +66,10 @@ export default async function ConsolidadoPage({ params }: { params: Promise<{ cl
 
   const logoUrl = await getAdvisorLogoUrl(supabase, user.id);
 
-  const accs = client.accounts;
+  // The consolidado view is always USD: each account's own snapshots convert using
+  // that month's own rate, so FX movement across the period is captured correctly
+  // rather than applying today's rate to every past month.
+  const accs = client.accounts.map((a) => ({ ...a, snapshots: toUsdSnapshotsByMonth(a.snapshots) }));
   const latestByAccount = accs.map((a) => {
     const lm = latestMonth(a.snapshots);
     return { account: a, month: lm, snap: lm ? a.snapshots[lm] : null };
