@@ -43,21 +43,38 @@ export async function exportConsolidadoToPdf(data: ConsolidadoPdfData) {
   const doc = new jsPDF({ unit: "pt", format: "letter" });
   const logo = data.logoUrl ? await fetchLogoForPdf(data.logoUrl) : null;
 
+  const headerH = logo ? 84 : 58;
+
   function pageHeader(title: string, subtitle: string) {
     doc.setFillColor(...NAVY);
-    doc.rect(0, 0, PAGE_W, 58, "F");
+    doc.rect(0, 0, PAGE_W, headerH, "F");
+
+    let textX = 40;
+    if (logo) {
+      // Fit within a bounding box rather than forcing a fixed size, so the advisor's
+      // actual logo shape (wide wordmark, square mark, etc.) isn't distorted.
+      const props = doc.getImageProperties(logo.dataUrl);
+      const maxW = 140;
+      const maxH = headerH - 24;
+      const scale = Math.min(maxW / props.width, maxH / props.height);
+      const w = props.width * scale;
+      const h = props.height * scale;
+      doc.addImage(logo.dataUrl, logo.format, 30, (headerH - h) / 2, w, h, undefined, "FAST");
+      textX = 30 + w + 20;
+    }
+
     doc.setTextColor(...GOLD);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(16);
-    doc.text(title, 40, 32);
+    doc.text(title, textX, logo ? 42 : 32);
     doc.setTextColor(255, 255, 255);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(10);
-    doc.text(subtitle, 40, 47);
+    doc.text(subtitle, textX, logo ? 60 : 47);
   }
 
   pageHeader("AIVA Wealth Platform", `${data.clientName} — Reporte consolidado — ${new Date().toLocaleDateString()}`);
-  let y = 90;
+  let y = headerH + 32;
 
   doc.setTextColor(40, 40, 40);
   doc.setFont("helvetica", "bold");
@@ -130,15 +147,10 @@ export async function exportConsolidadoToPdf(data: ConsolidadoPdfData) {
   const pageCount = doc.getNumberOfPages();
   for (let i = 1; i <= pageCount; i++) {
     doc.setPage(i);
-    let x = 40;
-    if (logo) {
-      doc.addImage(logo.dataUrl, logo.format, x, footerY - 14, 18, 18, undefined, "FAST");
-      x += 24;
-    }
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
     doc.setTextColor(130, 130, 130);
-    doc.text("Powered by AIVA Wealth", x, footerY);
+    doc.text("Powered by AIVA Wealth", 40, footerY);
   }
 
   const filename = `AIVA_${data.clientName.replace(/[^a-zA-Z0-9]+/g, "_")}_${new Date().toISOString().slice(0, 10)}.pdf`;
