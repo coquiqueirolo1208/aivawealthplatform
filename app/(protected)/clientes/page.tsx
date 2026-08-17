@@ -5,6 +5,8 @@ import { getProspectsForAdvisor } from "@/lib/queries/prospects";
 import { latestMonth } from "@/lib/finance";
 import { ClientList, type ClientRow } from "@/components/clients/client-list";
 import { ProspectsKanban } from "@/components/clients/prospects-kanban";
+import { AdvisorLogoCard } from "@/components/office/advisor-logo-card";
+import { getAdvisorLogoUrl } from "@/lib/queries/advisor";
 
 export default async function ClientesPage() {
   const supabase = await createClient();
@@ -29,6 +31,7 @@ export default async function ClientesPage() {
   });
 
   const prospects = await getProspectsForAdvisor(supabase, user.id);
+  const logoUrl = await getAdvisorLogoUrl(supabase, user.id);
   // Server Component, rendered fresh per request (no `use cache` / Cache Components
   // opted in here) — safe to read the real clock, unlike in a cacheable component.
   // eslint-disable-next-line react-hooks/purity
@@ -36,6 +39,9 @@ export default async function ClientesPage() {
 
   return (
     <div>
+      <div className="mb-4">
+        <AdvisorLogoCard logoUrl={logoUrl} />
+      </div>
       <ClientList clients={rows} />
       <ProspectsKanban prospects={prospects} nowMs={nowMs} />
     </div>
