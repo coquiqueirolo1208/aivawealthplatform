@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computeOfficeAumSeries, monthsInRange } from "./office";
+import { aggregateTopHoldings, computeOfficeAumSeries, monthsInRange } from "./office";
 
 describe("monthsInRange", () => {
   it("generates inclusive month keys across a year boundary", () => {
@@ -43,5 +43,34 @@ describe("computeOfficeAumSeries", () => {
 
   it("returns an empty array with no months", () => {
     expect(computeOfficeAumSeries([{ "2026-01": 100 }], [], "monthly")).toEqual([]);
+  });
+});
+
+describe("aggregateTopHoldings", () => {
+  it("merges holdings with fuzzy-matching names across accounts and clients, and sorts by total desc", () => {
+    const perAccount = [
+      [{ nombre: "Apple Inc", valor: 100, retornoPct: null }],
+      [{ nombre: "APPLE INC (USD)", valor: 50, retornoPct: null }],
+      [{ nombre: "Microsoft Corp", valor: 200, retornoPct: null }],
+    ];
+    const result = aggregateTopHoldings(perAccount, 5);
+    expect(result).toEqual([
+      { name: "Microsoft Corp", total: 200 },
+      { name: "Apple Inc", total: 150 },
+    ]);
+  });
+
+  it("respects the limit", () => {
+    const perAccount = [
+      [
+        { nombre: "A", valor: 5, retornoPct: null },
+        { nombre: "B", valor: 4, retornoPct: null },
+        { nombre: "C", valor: 3, retornoPct: null },
+      ],
+    ];
+    expect(aggregateTopHoldings(perAccount, 2)).toEqual([
+      { name: "A", total: 5 },
+      { name: "B", total: 4 },
+    ]);
   });
 });

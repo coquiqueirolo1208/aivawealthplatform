@@ -5,9 +5,19 @@ import { getAdvisorClientsWithSnapshots } from "@/lib/queries/portfolio";
 import { getPendingTasksForAdvisor } from "@/lib/queries/tasks";
 import { loadRadarData } from "@/lib/queries/radar";
 import { RadarPanel } from "@/components/office/radar-panel";
-import { clientTrailing12m, latestMonth, toUsdSnapshotsByMonth } from "@/lib/finance";
+import {
+  aggregateAllocation,
+  aggregateTopHoldings,
+  clientTrailing12m,
+  computeOfficeAumSeries,
+  latestMonth,
+  monthsInRange,
+  toUsdSnapshotsByMonth,
+} from "@/lib/finance";
 import { fmtPct, fmtUSD, pctClass } from "@/lib/format";
 import { markTaskDone } from "@/lib/actions/tasks";
+import { AllocationDoughnut } from "@/components/charts/allocation-doughnut";
+import { EvolutionLine } from "@/components/charts/evolution-line";
 
 export default async function OficinaPage() {
   const supabase = await createClient();
@@ -51,6 +61,36 @@ export default async function OficinaPage() {
   const aumGrowth = hasBaseline && aumInicioAno !== 0 ? ((aumTotal - aumInicioAno) / aumInicioAno) * 100 : null;
   const flujoNetoValue = hasFlujo ? flujoNeto : null;
 
+  // Office-wide holdings/allocation come from each account's own latest snapshot —
+  // same "latest per account" basis as aumTotal above, just not yet summed.
+  const latestSnapshots = clients.flatMap((c) =>
+    c.accounts.map((a) => {
+      const lm = latestMonth(a.snapshots);
+      return lm ? a.snapshots[lm] : null;
+    }),
+  ).filter((s) => s !== null);
+  const allocationTotals = aggregateAllocation(latestSnapshots);
+  const topHoldings = aggregateTopHoldings(
+    latestSnapshots.map((s) => s.holdings),
+    5,
+  );
+
+  const currentYYYYMM = new Date().toISOString().slice(0, 7);
+  const perAccountSparse = clients.flatMap((c) =>
+    c.accounts.map((a) => {
+      const sparse: Record<string, number> = {};
+      Object.entries(a.snapshots).forEach(([m, s]) => {
+        if (typeof s.valorActual === "number") sparse[m] = s.valorActual;
+      });
+      return sparse;
+    }),
+  );
+  const aumSeries = computeOfficeAumSeries(
+    perAccountSparse,
+    monthsInRange(new Date().getFullYear() + "-01", currentYYYYMM),
+    "monthly",
+  );
+
   // Comisiones del trimestre isn't derivable from client/account data at all —
   // shown as a fixed reference figure from the seeded demo dataset, not editable.
   const { data: demoMetrics } = await supabase
@@ -66,7 +106,10 @@ export default async function OficinaPage() {
   const best5 = performers.slice(0, 5);
   const worst5 = performers.slice(-5).reverse();
 
-  const tasks = await getPendingTasksForAdvisor(supabase, user.id);
+  // Overdue tasks are already covered by Radar's "Tareas vencidas" — this list only
+  // needs the ones still ahead, so the two sections don't repeat the same items.
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const upcomingTasks = (await getPendingTasksForAdvisor(supabase, user.id)).filter((t) => !t.due || t.due >= todayIso);
   const radarData = await loadRadarData(supabase, user.id);
 
   const growthCls = pctClass(aumGrowth);
@@ -82,6 +125,9 @@ export default async function OficinaPage() {
           <div className="mt-2.5 font-mono text-[13px] font-semibold" style={{ color: growthColor }}>
             {fmtPct(aumGrowth)} <span className="font-sans text-[12px] font-normal text-(--muted)">vs. inicio de año</span>
           </div>
+          <div className="mt-4">
+            <EvolutionLine series={[{ label: "AUM total", color: "#B9975B", bold: true, points: aumSeries }]} />
+          </div>
         </div>
         <div className="rounded-[10px] border border-(--line) bg-(--panel) p-5">
           <MetricRow label="Comisiones del trimestre" value={fmtUSD(demoMetrics?.comisiones_q ?? null)} />
@@ -95,26 +141,49 @@ export default async function OficinaPage() {
         <RadarPanel data={radarData} />
       </div>
 
+      <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div className="rounded-[10px] border border-(--line) bg-(--panel) p-5">
+          <h3 className="mb-3 font-heading text-base font-semibold text-(--paper)">
+            Top 5 holdings (todos los clientes)
+          </h3>
+          {topHoldings.length === 0 ? (
+            <div className="p-6 text-center text-[13px] text-(--muted)">Sin datos de holdings todavía.</div>
+          ) : (
+            topHoldings.map((h) => (
+              <div
+                key={h.name}
+                className="row-hover mb-1.5 flex items-center justify-between rounded-lg px-3.5 py-2.5 text-[12.5px]"
+                style={{ background: "var(--panel-2)", border: "1px solid var(--line)" }}
+              >
+                <span className="text-(--paper)">{h.name}</span>
+                <span className="font-mono text-(--muted)">{fmtUSD(h.total)}</span>
+              </div>
+            ))
+          )}
+        </div>
+        <div className="rounded-[10px] border border-(--line) bg-(--panel) p-5">
+          <h3 className="mb-3 font-heading text-base font-semibold text-(--paper)">
+            Asignación de activos (todos los clientes)
+          </h3>
+          <AllocationDoughnut totals={allocationTotals} />
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <PerformersCard title="Mejores 5 clientes (12 meses)" accent="pos" list={best5} />
         <PerformersCard title="Peores 5 clientes (12 meses)" accent="neg" list={worst5} />
       </div>
 
       <div className="mt-4 rounded-[10px] border border-(--line) bg-(--panel) p-5">
-        <h3 className="mb-3 font-heading text-base font-semibold text-(--paper)">
-          Tareas pendientes de todos los clientes
-        </h3>
-        {tasks.length === 0 ? (
+        <h3 className="mb-3 font-heading text-base font-semibold text-(--paper)">Tareas Pendientes No Vencidas</h3>
+        {upcomingTasks.length === 0 ? (
           <div className="p-6 text-center text-[13px] text-(--muted)">No hay tareas pendientes.</div>
         ) : (
-          tasks.map((t) => (
+          upcomingTasks.map((t) => (
             <div
               key={t.id}
               className="row-hover mb-2 flex items-center justify-between rounded-lg px-3.5 py-2.5 text-[12.5px]"
-              style={{
-                background: "var(--panel-2)",
-                border: `1px solid ${t.due && t.due < new Date().toISOString().slice(0, 10) ? "var(--brick)" : "var(--line)"}`,
-              }}
+              style={{ background: "var(--panel-2)", border: "1px solid var(--line)" }}
             >
               <span>
                 <Link href={`/clientes/${t.clientId}`} className="font-semibold text-(--brass) underline">

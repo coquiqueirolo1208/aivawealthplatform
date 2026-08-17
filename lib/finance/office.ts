@@ -3,6 +3,9 @@
 // in Supabase that fetch becomes a single query (done by the caller). This module
 // keeps only the pure aggregation math so it can be unit tested without a DB.
 
+import { normalizeName } from "./core";
+import type { Holding } from "./types";
+
 export const QUARTER_END_MONTHS = ["03", "06", "09", "12"] as const;
 
 export function monthsInRange(fromYM: string, toYM: string): string[] {
@@ -75,4 +78,27 @@ export function computeOfficeAumSeries(
 
   const firstIdx = result.findIndex((p) => p.y != null);
   return firstIdx > 0 ? result.slice(firstIdx) : result;
+}
+
+export interface TopHolding {
+  name: string;
+  total: number;
+}
+
+/**
+ * Groups holdings from every client's latest snapshot into one office-wide total
+ * (same fuzzy name matching as the radar's concentration check, so e.g. two share
+ * classes of the same fund are counted together) and returns the `limit` largest.
+ */
+export function aggregateTopHoldings(latestHoldingsPerAccount: Holding[][], limit: number): TopHolding[] {
+  const rows: Record<string, TopHolding> = {};
+  latestHoldingsPerAccount.flat().forEach((h) => {
+    const key = normalizeName(h.nombre);
+    if (!key) return;
+    if (!rows[key]) rows[key] = { name: h.nombre, total: 0 };
+    rows[key].total += Number(h.valor) || 0;
+  });
+  return Object.values(rows)
+    .sort((a, b) => b.total - a.total)
+    .slice(0, limit);
 }
