@@ -22,6 +22,7 @@ export interface RadarData {
   atrasos: Array<{
     clientId: string;
     clientName: string;
+    accountId: string;
     account: string;
     situacion: "sin_datos" | "atrasado";
     ultimoMes?: string;
@@ -78,11 +79,11 @@ export function buildRadarData(
       const months = Object.keys(a.snapshots).sort();
       const lm = months.length ? months[months.length - 1] : null;
       if (!lm) {
-        all.atrasos.push({ clientId: client.id, clientName: client.name, account: a.label, situacion: "sin_datos" });
+        all.atrasos.push({ clientId: client.id, clientName: client.name, accountId: a.id, account: a.label, situacion: "sin_datos" });
       } else {
         const lag = monthDiff(lm, todayMonth);
         if (lag >= 2) {
-          all.atrasos.push({ clientId: client.id, clientName: client.name, account: a.label, situacion: "atrasado", ultimoMes: lm, mesesAtraso: lag });
+          all.atrasos.push({ clientId: client.id, clientName: client.name, accountId: a.id, account: a.label, situacion: "atrasado", ultimoMes: lm, mesesAtraso: lag });
         }
       }
     });

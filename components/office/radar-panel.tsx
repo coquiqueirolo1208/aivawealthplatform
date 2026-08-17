@@ -1,10 +1,14 @@
 import Link from "next/link";
 import type { RadarData } from "@/lib/finance/radar";
+import { AtrasoRow, DocumentoRow, RiesgoRow, TareaRow } from "./radar-rows";
 
-function ClientLink({ clientId, clientName }: { clientId: string; clientName: string }) {
+const MAX_ROWS = 5;
+
+function VerTodos({ section, count }: { section: string; count: number }) {
+  if (count <= MAX_ROWS) return null;
   return (
-    <Link href={`/clientes/${clientId}`} className="font-semibold text-(--brass) underline">
-      {clientName}
+    <Link href={`/oficina/radar/${section}`} className="mt-2 inline-block text-[11px] font-semibold text-(--brass) underline">
+      Ver todos ({count}) →
     </Link>
   );
 }
@@ -28,20 +32,10 @@ export function RadarPanel({ data }: { data: RadarData }) {
           <h3 className="mb-2 font-heading text-base font-semibold" style={{ color: "var(--brick)" }}>
             Tareas vencidas ({data.tareas.length})
           </h3>
-          {data.tareas.map((t, i) => (
-            <div
-              key={i}
-              className="mb-1.5 flex flex-wrap items-center justify-between gap-2.5 border-l-2 py-1.5 pl-3 text-[13px]"
-              style={{ borderColor: "var(--brick)" }}
-            >
-              <span>
-                <ClientLink clientId={t.clientId} clientName={t.clientName} /> — {t.title}
-              </span>
-              <span className="text-[11px]" style={{ color: "var(--brick)" }}>
-                venció {t.due}
-              </span>
-            </div>
+          {data.tareas.slice(0, MAX_ROWS).map((t, i) => (
+            <TareaRow key={i} t={t} />
           ))}
+          <VerTodos section="tareas" count={data.tareas.length} />
         </div>
       )}
 
@@ -50,20 +44,10 @@ export function RadarPanel({ data }: { data: RadarData }) {
           <h3 className="mb-2 font-heading text-base font-semibold text-(--paper)">
             Documentación KYC pendiente / vencida ({data.documentos.length})
           </h3>
-          {data.documentos.map((d, i) => {
-            const color = d.estado === "Vencido" ? "var(--brick)" : "var(--brass)";
-            return (
-              <div key={i} className="mb-1.5 flex flex-wrap items-center justify-between gap-2.5 border-l-2 py-1.5 pl-3 text-[13px]" style={{ borderColor: color }}>
-                <span>
-                  <ClientLink clientId={d.clientId} clientName={d.clientName} /> — {d.tipo}
-                </span>
-                <span className="text-[11px] font-bold uppercase" style={{ color }}>
-                  {d.estado}
-                  {d.vencimiento ? ` (${d.vencimiento})` : ""}
-                </span>
-              </div>
-            );
-          })}
+          {data.documentos.slice(0, MAX_ROWS).map((d, i) => (
+            <DocumentoRow key={i} d={d} />
+          ))}
+          <VerTodos section="documentos" count={data.documentos.length} />
         </div>
       )}
 
@@ -72,16 +56,10 @@ export function RadarPanel({ data }: { data: RadarData }) {
           <h3 className="mb-2 font-heading text-base font-semibold text-(--paper)">
             Estados de cuenta atrasados ({data.atrasos.length})
           </h3>
-          {data.atrasos.map((a, i) => (
-            <div key={i} className="mb-1.5 flex flex-wrap items-center justify-between gap-2.5 py-1.5 text-[13px]">
-              <span>
-                <ClientLink clientId={a.clientId} clientName={a.clientName} /> — {a.account}
-              </span>
-              <span className="text-[11px] text-(--muted)">
-                {a.situacion === "sin_datos" ? "sin ningún estado de cuenta cargado" : `último cargado: ${a.ultimoMes} — ${a.mesesAtraso} meses de atraso`}
-              </span>
-            </div>
+          {data.atrasos.slice(0, MAX_ROWS).map((a, i) => (
+            <AtrasoRow key={i} a={a} />
           ))}
+          <VerTodos section="atrasos" count={data.atrasos.length} />
         </div>
       )}
 
@@ -94,17 +72,10 @@ export function RadarPanel({ data }: { data: RadarData }) {
             Comparación aproximada (asignación sin refinar) — para el detalle exacto entrá al consolidado del
             cliente.
           </div>
-          {data.riesgo.map((r, i) => (
-            <div key={i} className="mb-1.5 flex flex-wrap items-center justify-between gap-2.5 py-1.5 text-[13px]">
-              <span>
-                <ClientLink clientId={r.clientId} clientName={r.clientName} /> — perfil {r.perfil}
-              </span>
-              <span className="text-[11px] text-(--paper-dim)">
-                RV actual {r.rvActual.toFixed(1)}% vs objetivo {r.rvTarget.toFixed(1)}% ({r.dev >= 0 ? "+" : ""}
-                {r.dev.toFixed(1)} p.p.)
-              </span>
-            </div>
+          {data.riesgo.slice(0, MAX_ROWS).map((r, i) => (
+            <RiesgoRow key={i} r={r} />
           ))}
+          <VerTodos section="riesgo" count={data.riesgo.length} />
         </div>
       )}
     </div>
