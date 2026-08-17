@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { PROSPECT_STAGES, ONBOARDING_FORM_URL } from "@/lib/constants";
 import { fmtUSD } from "@/lib/format";
-import { addProspect, convertProspect, deleteProspect, updateProspectStage } from "@/lib/actions/prospects";
+import { addProspect, convertProspect, deleteProspect, updateProspect, updateProspectStage } from "@/lib/actions/prospects";
 import type { Prospect } from "@/lib/queries/prospects";
 
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
@@ -102,6 +102,7 @@ function ProspectStageModal({
   onConverted: (clientId: string) => void;
 }) {
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   return (
     <div
@@ -124,60 +125,91 @@ function ProspectStageModal({
         {prospects.length === 0 ? (
           <div className="p-6 text-center text-[13px] text-(--muted)">No hay prospectos en esta etapa.</div>
         ) : (
-          prospects.map((p) => (
-            <div key={p.id} className="row-hover mb-3 rounded-lg p-3.5 text-[12.5px]" style={{ background: "var(--panel-2)", border: "1px solid var(--line)" }}>
-              <div className="mb-1 flex items-center justify-between">
-                <span className="font-semibold text-(--paper)">{p.name}</span>
-                <span className="font-mono text-(--muted)">{p.aumEstimado != null ? fmtUSD(p.aumEstimado) : "—"}</span>
-              </div>
-              {p.empresa && <div className="text-(--paper-dim)">{p.empresa}</div>}
-              {p.fuente && <div className="text-(--muted)">Fuente: {p.fuente}</div>}
-              {(p.proximaAccion || p.proximaFecha) && (
-                <div className="text-(--paper-dim)">
-                  Próxima acción: {p.proximaAccion ?? "—"} {p.proximaFecha && `(${p.proximaFecha})`}
+          prospects.map((p) =>
+            editingId === p.id ? (
+              <form
+                key={p.id}
+                action={async (fd) => {
+                  await updateProspect(p.id, fd);
+                  setEditingId(null);
+                }}
+                className="mb-3 grid grid-cols-2 gap-2 rounded-lg p-3.5"
+                style={{ background: "var(--panel-2)", border: "1px solid var(--line)" }}
+              >
+                <input type="text" name="name" placeholder="Nombre *" defaultValue={p.name} required autoFocus />
+                <input type="text" name="empresa" placeholder="Empresa / ocupación" defaultValue={p.empresa ?? ""} />
+                <input type="text" name="fuente" placeholder="Fuente (referido, evento…)" defaultValue={p.fuente ?? ""} />
+                <input type="text" name="aumEstimado" placeholder="AUM estimado" defaultValue={p.aumEstimado ?? ""} />
+                <input type="text" name="proximaAccion" placeholder="Próxima acción" defaultValue={p.proximaAccion ?? ""} />
+                <input type="date" name="proximaFecha" defaultValue={p.proximaFecha ?? ""} />
+                <textarea name="notas" placeholder="Notas" defaultValue={p.notas ?? ""} className="col-span-2" />
+                <div className="col-span-full flex gap-2">
+                  <button type="submit" className="flex-1">
+                    Guardar
+                  </button>
+                  <button type="button" className="secondary flex-1" onClick={() => setEditingId(null)}>
+                    Cancelar
+                  </button>
                 </div>
-              )}
-              {p.notas && <div className="mt-1 text-(--muted)">{p.notas}</div>}
+              </form>
+            ) : (
+              <div key={p.id} className="row-hover mb-3 rounded-lg p-3.5 text-[12.5px]" style={{ background: "var(--panel-2)", border: "1px solid var(--line)" }}>
+                <div className="mb-1 flex items-center justify-between">
+                  <span className="font-semibold text-(--paper)">{p.name}</span>
+                  <span className="font-mono text-(--muted)">{p.aumEstimado != null ? fmtUSD(p.aumEstimado) : "—"}</span>
+                </div>
+                {p.empresa && <div className="text-(--paper-dim)">{p.empresa}</div>}
+                {p.fuente && <div className="text-(--muted)">Fuente: {p.fuente}</div>}
+                {(p.proximaAccion || p.proximaFecha) && (
+                  <div className="text-(--paper-dim)">
+                    Próxima acción: {p.proximaAccion ?? "—"} {p.proximaFecha && `(${p.proximaFecha})`}
+                  </div>
+                )}
+                {p.notas && <div className="mt-1 text-(--muted)">{p.notas}</div>}
 
-              <div className="mt-2 flex flex-wrap items-center gap-2">
-                <select
-                  defaultValue={p.stage}
-                  onChange={(e) => updateProspectStage(p.id, e.target.value)}
-                  className="text-[11px]"
-                >
-                  {PROSPECT_STAGES.map(([id, label]) => (
-                    <option key={id} value={id}>
-                      {label}
-                    </option>
-                  ))}
-                </select>
-                {stageId === "ganado" && !p.convertedClientId && (
-                  <>
-                    <a href={ONBOARDING_FORM_URL} target="_blank" rel="noopener" className="text-[11px] text-(--brass) underline">
-                      Iniciar alta ↗
-                    </a>
-                    <button
-                      type="button"
-                      className="px-2.5 py-1 text-[11px]"
-                      onClick={() => convertProspect(p.id, p.name).then((id) => onConverted(id))}
-                    >
-                      Convertir a cliente
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <select
+                    defaultValue={p.stage}
+                    onChange={(e) => updateProspectStage(p.id, e.target.value)}
+                    className="text-[11px]"
+                  >
+                    {PROSPECT_STAGES.map(([id, label]) => (
+                      <option key={id} value={id}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                  {stageId === "ganado" && !p.convertedClientId && (
+                    <>
+                      <a href={ONBOARDING_FORM_URL} target="_blank" rel="noopener" className="text-[11px] text-(--brass) underline">
+                        Iniciar alta ↗
+                      </a>
+                      <button
+                        type="button"
+                        className="px-2.5 py-1 text-[11px]"
+                        onClick={() => convertProspect(p.id, p.name).then((id) => onConverted(id))}
+                      >
+                        Convertir a cliente
+                      </button>
+                    </>
+                  )}
+                  {p.convertedClientId && <span className="text-[11px] text-(--teal)">Ya convertido a cliente</span>}
+                  <button type="button" className="secondary px-2.5 py-1 text-[11px]" onClick={() => setEditingId(p.id)}>
+                    Editar
+                  </button>
+                  {confirmingId === p.id ? (
+                    <button type="button" className="bg-(--brick) px-2 py-1 text-[11px]" onClick={() => deleteProspect(p.id)}>
+                      ¿Confirmar borrado?
                     </button>
-                  </>
-                )}
-                {p.convertedClientId && <span className="text-[11px] text-(--teal)">Ya convertido a cliente</span>}
-                {confirmingId === p.id ? (
-                  <button type="button" className="bg-(--brick) px-2 py-1 text-[11px]" onClick={() => deleteProspect(p.id)}>
-                    ¿Confirmar borrado?
-                  </button>
-                ) : (
-                  <button type="button" className="secondary px-2.5 py-1 text-[11px]" onClick={() => setConfirmingId(p.id)}>
-                    Borrar
-                  </button>
-                )}
+                  ) : (
+                    <button type="button" className="secondary px-2.5 py-1 text-[11px]" onClick={() => setConfirmingId(p.id)}>
+                      Borrar
+                    </button>
+                  )}
+                </div>
               </div>
-            </div>
-          ))
+            ),
+          )
         )}
       </div>
     </div>

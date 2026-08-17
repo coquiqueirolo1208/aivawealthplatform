@@ -31,6 +31,7 @@ export async function addProspect(formData: FormData) {
   });
   if (error) throw error;
   revalidatePath("/clientes");
+  revalidatePath("/prospectos");
 }
 
 export async function updateProspectStage(prospectId: string, stage: string) {
@@ -38,6 +39,29 @@ export async function updateProspectStage(prospectId: string, stage: string) {
   const { error } = await supabase.from("prospects").update({ stage }).eq("id", prospectId);
   if (error) throw error;
   revalidatePath("/clientes");
+  revalidatePath("/prospectos");
+}
+
+export async function updateProspect(prospectId: string, formData: FormData) {
+  const name = String(formData.get("name") ?? "").trim();
+  if (!name) return;
+  const { supabase } = await requireAdvisorId();
+  const aumRaw = String(formData.get("aumEstimado") ?? "").replace(/[^0-9.]/g, "");
+  const { error } = await supabase
+    .from("prospects")
+    .update({
+      name,
+      empresa: String(formData.get("empresa") ?? "") || null,
+      fuente: String(formData.get("fuente") ?? "") || null,
+      aum_estimado: aumRaw ? Number(aumRaw) : null,
+      proxima_accion: String(formData.get("proximaAccion") ?? "") || null,
+      proxima_fecha: String(formData.get("proximaFecha") ?? "") || null,
+      notas: String(formData.get("notas") ?? "") || null,
+    })
+    .eq("id", prospectId);
+  if (error) throw error;
+  revalidatePath("/clientes");
+  revalidatePath("/prospectos");
 }
 
 export async function deleteProspect(prospectId: string) {
@@ -45,6 +69,7 @@ export async function deleteProspect(prospectId: string) {
   const { error } = await supabase.from("prospects").delete().eq("id", prospectId);
   if (error) throw error;
   revalidatePath("/clientes");
+  revalidatePath("/prospectos");
 }
 
 export async function convertProspect(prospectId: string, name: string) {
@@ -58,5 +83,6 @@ export async function convertProspect(prospectId: string, name: string) {
   const { error } = await supabase.from("prospects").update({ converted_client_id: client.id }).eq("id", prospectId);
   if (error) throw error;
   revalidatePath("/clientes");
+  revalidatePath("/prospectos");
   return client.id;
 }

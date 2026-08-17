@@ -9,7 +9,12 @@ const CARDS = [
   {
     href: "/clientes",
     title: "Mis Clientes",
-    desc: "Buscá y abrí el consolidado, las cuentas y el PDF de cada cliente. Incluye tu pipeline de prospectos.",
+    desc: "Buscá y abrí el consolidado, las cuentas y el PDF de cada cliente.",
+  },
+  {
+    href: "/prospectos",
+    title: "Prospectos",
+    desc: "Pipeline de prospección: alta de nuevos prospectos, seguimiento por etapa e indicadores de conversión.",
   },
   {
     href: "/research",
