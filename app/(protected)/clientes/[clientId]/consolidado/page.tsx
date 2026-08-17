@@ -21,9 +21,11 @@ import { AllocationDoughnut } from "@/components/charts/allocation-doughnut";
 import { EvolutionLine, type EvolutionSeries } from "@/components/charts/evolution-line";
 import { DocumentsCard } from "@/components/clients/documents-card";
 import { RiskProfileCard } from "@/components/clients/risk-profile-card";
+import { TasksCard } from "@/components/clients/tasks-card";
 import { BenchmarkCard } from "@/components/clients/benchmark-card";
 import { BulkUploadCard } from "@/components/clients/bulk-upload-card";
 import { ExportPdfButton } from "@/components/clients/export-pdf-button";
+import { getTasksForClient } from "@/lib/queries/tasks";
 
 function buildEvolutionSeries(accounts: AccountWithSnapshots[]): EvolutionSeries[] {
   const allMonths = Array.from(new Set(accounts.flatMap((a) => Object.keys(a.snapshots)))).sort();
@@ -102,6 +104,7 @@ export default async function ConsolidadoPage({ params }: { params: Promise<{ cl
     .from("client_documents")
     .select("id, tipo, estado, vencimiento, notas")
     .eq("client_id", clientId);
+  const tasks = await getTasksForClient(supabase, clientId);
   const { data: riskProfileRow } = await supabase
     .from("risk_profiles")
     .select("*")
@@ -291,7 +294,8 @@ export default async function ConsolidadoPage({ params }: { params: Promise<{ cl
         </>
       )}
 
-      <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
+        <TasksCard clientId={clientId} tasks={tasks} />
         <DocumentsCard clientId={clientId} documents={documents ?? []} />
         <RiskProfileCard
           clientId={clientId}

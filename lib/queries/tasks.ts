@@ -9,6 +9,23 @@ export interface PendingTask {
   clientName: string;
 }
 
+export interface ClientTask {
+  id: string;
+  title: string;
+  due: string | null;
+  done: boolean;
+}
+
+/** All tasks (pending and done) for a single client, pending-first then soonest-due. */
+export async function getTasksForClient(supabase: SupabaseClient<Database>, clientId: string): Promise<ClientTask[]> {
+  const { data, error } = await supabase.from("tasks").select("id, title, due, done").eq("client_id", clientId);
+  if (error) throw error;
+  return (data ?? []).sort((a, b) => {
+    if (a.done !== b.done) return a.done ? 1 : -1;
+    return (a.due ?? "9999").localeCompare(b.due ?? "9999");
+  });
+}
+
 /**
  * Pending tasks across every client of this advisor, sorted by due date (nulls last).
  * Two flat queries + a JS join, rather than a nested/embedded select — this hand-written

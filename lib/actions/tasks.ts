@@ -5,10 +5,13 @@ import { createClient } from "@/lib/supabase/server";
 
 export async function markTaskDone(taskId: string) {
   const supabase = await createClient();
-  const { error } = await supabase.from("tasks").update({ done: true }).eq("id", taskId);
+  const { data: task, error } = await supabase.from("tasks").update({ done: true }).eq("id", taskId).select("client_id").single();
   if (error) throw error;
   revalidatePath("/oficina");
+  revalidatePath("/oficina/tareas-pendientes");
+  revalidatePath("/oficina/radar/tareas");
   revalidatePath("/clientes");
+  if (task) revalidatePath(`/clientes/${task.client_id}/consolidado`);
 }
 
 export async function addTask(clientId: string, formData: FormData) {
@@ -18,6 +21,7 @@ export async function addTask(clientId: string, formData: FormData) {
   const supabase = await createClient();
   const { error } = await supabase.from("tasks").insert({ client_id: clientId, title, due });
   if (error) throw error;
-  revalidatePath(`/clientes/${clientId}`);
+  revalidatePath(`/clientes/${clientId}/consolidado`);
   revalidatePath("/oficina");
+  revalidatePath("/oficina/tareas-pendientes");
 }

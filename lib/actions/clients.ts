@@ -34,3 +34,14 @@ export async function deleteClient(clientId: string) {
   if (error) throw error;
   revalidatePath("/clientes");
 }
+
+export async function updateClientBirthday(clientId: string, fechaNacimiento: string) {
+  const { supabase } = await requireAdvisorId();
+  const { error } = await supabase
+    .from("clients")
+    .update({ fecha_nacimiento: fechaNacimiento || null })
+    .eq("id", clientId);
+  if (error) throw error;
+  revalidatePath(`/clientes/${clientId}/consolidado`);
+  revalidatePath("/oficina");
+}

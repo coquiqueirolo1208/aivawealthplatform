@@ -3,6 +3,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getAdvisorClientsWithSnapshots } from "@/lib/queries/portfolio";
 import { getPendingTasksForAdvisor } from "@/lib/queries/tasks";
+import { getClientBirthdays } from "@/lib/queries/clients";
 import { loadRadarData } from "@/lib/queries/radar";
 import { RadarPanel } from "@/components/office/radar-panel";
 import {
@@ -10,6 +11,7 @@ import {
   aggregateTopHoldings,
   clientTrailing12m,
   computeOfficeAumSeries,
+  computeUpcomingBirthdays,
   latestMonth,
   monthsInRange,
   toUsdSnapshotsByMonth,
@@ -114,6 +116,13 @@ export default async function OficinaPage() {
   const upcomingTasks = (await getPendingTasksForAdvisor(supabase, user.id)).filter((t) => !t.due || t.due >= todayIso);
   const radarData = await loadRadarData(supabase, user.id);
 
+  const clientBirthdays = await getClientBirthdays(supabase, user.id);
+  const upcomingBirthdays = computeUpcomingBirthdays(
+    clientBirthdays.map((c) => ({ id: c.id, name: c.name, fechaNacimiento: c.fechaNacimiento })),
+    todayIso,
+    5,
+  );
+
   const growthCls = pctClass(aumGrowth);
   const growthColor = growthCls === "pos" ? "var(--teal)" : growthCls === "neg" ? "var(--brick)" : "var(--paper-dim)";
   const flujoCls = flujoNetoValue == null ? undefined : flujoNetoValue >= 0 ? "pos" : "neg";
@@ -143,7 +152,7 @@ export default async function OficinaPage() {
         <RadarPanel data={radarData} />
       </div>
 
-      <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-3">
         <div className="rounded-[10px] border border-(--line) bg-(--panel) p-5">
           <h3 className="mb-3 font-heading text-base font-semibold text-(--paper)">
             Top 5 holdings (todos los clientes)
@@ -168,6 +177,26 @@ export default async function OficinaPage() {
             Asignación de activos (todos los clientes)
           </h3>
           <AllocationDoughnut totals={allocationTotals} />
+        </div>
+        <div className="rounded-[10px] border border-(--line) bg-(--panel) p-5">
+          <h3 className="mb-3 font-heading text-base font-semibold text-(--paper)">Próximos cumpleaños</h3>
+          {upcomingBirthdays.length === 0 ? (
+            <div className="p-6 text-center text-[13px] text-(--muted)">
+              Sin cumpleaños cargados — agregalos desde la ficha de cada cliente.
+            </div>
+          ) : (
+            upcomingBirthdays.map((b) => (
+              <Link
+                key={b.clientId}
+                href={`/clientes/${b.clientId}`}
+                className="row-hover mb-1.5 flex items-center justify-between rounded-lg px-3.5 py-2.5 text-[12.5px]"
+                style={{ background: "var(--panel-2)", border: "1px solid var(--line)" }}
+              >
+                <span className="text-(--paper)">🎂 {b.clientName}</span>
+                <span className="font-mono text-(--muted)">{b.daysUntil === 0 ? "hoy" : `en ${b.daysUntil}d`}</span>
+              </Link>
+            ))
+          )}
         </div>
       </div>
 
