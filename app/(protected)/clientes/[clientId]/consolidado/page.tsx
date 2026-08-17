@@ -11,7 +11,6 @@ import {
   computeMTD,
   computePMTargetWeights,
   computeYTD,
-  currentFingerprint,
   latestMonth,
   refineAssetAllocation,
   toUsdSnapshotsByMonth,
@@ -23,7 +22,6 @@ import { EvolutionLine, type EvolutionSeries } from "@/components/charts/evoluti
 import { DocumentsCard } from "@/components/clients/documents-card";
 import { RiskProfileCard } from "@/components/clients/risk-profile-card";
 import { BenchmarkCard } from "@/components/clients/benchmark-card";
-import { RecommendationsCard, type RecommendationsData } from "@/components/clients/recommendations-card";
 import { BulkUploadCard } from "@/components/clients/bulk-upload-card";
 import { ExportPdfButton } from "@/components/clients/export-pdf-button";
 
@@ -99,9 +97,6 @@ export default async function ConsolidadoPage({ params }: { params: Promise<{ cl
   const evolutionSeries = buildEvolutionSeries(accs);
 
   const benchmarkLevels = await getBenchmarkLevels(supabase);
-
-  const { data: recRow } = await supabase.from("recommendations_cache").select("*").eq("client_id", clientId).maybeSingle();
-  const recFingerprint = currentFingerprint(accs.map((a) => ({ account: a, snapshots: a.snapshots })));
 
   const { data: documents } = await supabase
     .from("client_documents")
@@ -293,23 +288,6 @@ export default async function ConsolidadoPage({ params }: { params: Promise<{ cl
           )}
 
           <BenchmarkCard portfolioMTD={mtdBlend} portfolioYTD={ytdBlend} benchmarkLevels={benchmarkLevels} />
-
-          <RecommendationsCard
-            clientId={clientId}
-            data={
-              recRow
-                ? ({
-                    fecha: recRow.fecha,
-                    resumenMercado: recRow.resumen_mercado,
-                    cambiar: recRow.cambiar,
-                    mantenerConCondicion: recRow.mantener_con_condicion,
-                    estructurales: recRow.estructurales,
-                    fingerprint: recRow.fingerprint,
-                  } as RecommendationsData)
-                : null
-            }
-            isStale={!!recRow && recRow.fingerprint !== recFingerprint}
-          />
         </>
       )}
 
