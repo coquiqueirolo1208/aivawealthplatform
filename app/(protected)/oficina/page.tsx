@@ -15,9 +15,11 @@ import {
   toUsdSnapshotsByMonth,
 } from "@/lib/finance";
 import { fmtPct, fmtUSD, pctClass } from "@/lib/format";
-import { markTaskDone } from "@/lib/actions/tasks";
 import { AllocationDoughnut } from "@/components/charts/allocation-doughnut";
 import { EvolutionLine } from "@/components/charts/evolution-line";
+import { PendingTaskRow } from "@/components/office/radar-rows";
+
+const MAX_UPCOMING_TASKS = 5;
 
 export default async function OficinaPage() {
   const supabase = await createClient();
@@ -175,29 +177,22 @@ export default async function OficinaPage() {
       </div>
 
       <div className="mt-4 rounded-[10px] border border-(--line) bg-(--panel) p-5">
-        <h3 className="mb-3 font-heading text-base font-semibold text-(--paper)">Tareas Pendientes No Vencidas</h3>
+        <h3 className="mb-3 font-heading text-base font-semibold text-(--paper)">
+          Tareas Pendientes No Vencidas ({upcomingTasks.length})
+        </h3>
         {upcomingTasks.length === 0 ? (
           <div className="p-6 text-center text-[13px] text-(--muted)">No hay tareas pendientes.</div>
         ) : (
-          upcomingTasks.map((t) => (
-            <div
-              key={t.id}
-              className="row-hover mb-2 flex items-center justify-between rounded-lg px-3.5 py-2.5 text-[12.5px]"
-              style={{ background: "var(--panel-2)", border: "1px solid var(--line)" }}
-            >
-              <span>
-                <Link href={`/clientes/${t.clientId}`} className="font-semibold text-(--brass) underline">
-                  {t.clientName}
-                </Link>{" "}
-                — {t.title} {t.due && <span className="font-mono text-(--muted)">(vence {t.due})</span>}
-              </span>
-              <form action={markTaskDone.bind(null, t.id)}>
-                <button type="submit" className="secondary px-2.5 py-1 text-[11px]">
-                  Marcar hecha
-                </button>
-              </form>
-            </div>
-          ))
+          <>
+            {upcomingTasks.slice(0, MAX_UPCOMING_TASKS).map((t) => (
+              <PendingTaskRow key={t.id} t={t} />
+            ))}
+            {upcomingTasks.length > MAX_UPCOMING_TASKS && (
+              <Link href="/oficina/tareas-pendientes" className="mt-2 inline-block text-[11px] font-semibold text-(--brass) underline">
+                Ver todas ({upcomingTasks.length}) →
+              </Link>
+            )}
+          </>
         )}
       </div>
     </div>

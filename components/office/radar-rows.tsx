@@ -1,5 +1,7 @@
 import Link from "next/link";
 import type { RadarData } from "@/lib/finance/radar";
+import type { PendingTask } from "@/lib/queries/tasks";
+import { markTaskDone } from "@/lib/actions/tasks";
 
 export function ClientLink({ clientId, clientName }: { clientId: string; clientName: string }) {
   return (
@@ -52,6 +54,25 @@ export function AtrasoRow({ a }: { a: RadarData["atrasos"][number] }) {
       <span className="text-[11px] text-(--muted)">
         {a.situacion === "sin_datos" ? "sin ningún estado de cuenta cargado" : `último cargado: ${a.ultimoMes} — ${a.mesesAtraso} meses de atraso`}
       </span>
+    </div>
+  );
+}
+
+export function PendingTaskRow({ t }: { t: PendingTask }) {
+  return (
+    <div
+      className="row-hover mb-2 flex items-center justify-between rounded-lg px-3.5 py-2.5 text-[12.5px]"
+      style={{ background: "var(--panel-2)", border: "1px solid var(--line)" }}
+    >
+      <span>
+        <ClientLink clientId={t.clientId} clientName={t.clientName} /> — {t.title}{" "}
+        {t.due && <span className="font-mono text-(--muted)">(vence {t.due})</span>}
+      </span>
+      <form action={markTaskDone.bind(null, t.id)}>
+        <button type="submit" className="secondary px-2.5 py-1 text-[11px]">
+          Marcar hecha
+        </button>
+      </form>
     </div>
   );
 }

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { loadRadarData } from "@/lib/queries/radar";
-import { AtrasoRow, DocumentoRow, RiesgoRow, TareaRow } from "@/components/office/radar-rows";
+import { SearchableSectionList } from "@/components/office/searchable-section-list";
 
 const SECTION_TITLES = {
   tareas: "Tareas vencidas",
@@ -42,13 +42,13 @@ export default async function RadarSectionPage({ params }: { params: Promise<{ s
         {items.length === 0 ? (
           <div className="p-6 text-center text-[13px] text-(--muted)">No hay elementos pendientes en esta categoría.</div>
         ) : section === "tareas" ? (
-          data.tareas.map((t, i) => <TareaRow key={i} t={t} />)
+          <SearchableSectionList kind="tareas" items={data.tareas} />
         ) : section === "documentos" ? (
-          data.documentos.map((d, i) => <DocumentoRow key={i} d={d} />)
+          <SearchableSectionList kind="documentos" items={data.documentos} />
         ) : section === "atrasos" ? (
-          data.atrasos.map((a, i) => <AtrasoRow key={i} a={a} />)
+          <SearchableSectionList kind="atrasos" items={data.atrasos} />
         ) : (
-          data.riesgo.map((r, i) => <RiesgoRow key={i} r={r} />)
+          <SearchableSectionList kind="riesgo" items={data.riesgo} />
         )}
       </div>
     </div>
