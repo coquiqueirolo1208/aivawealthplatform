@@ -103,6 +103,18 @@ export default async function OficinaPage() {
     .eq("is_demo", true)
     .maybeSingle();
 
+  // "Nuevos (YTD)" scopes the same way as the totals above — every client/prospect
+  // visible to this advisor (including shared demo rows), just filtered by created_at.
+  const yearStartIso = new Date().getFullYear() + "-01-01";
+  const [{ count: newClientsYtd }, { count: newProspectsYtd }] = await Promise.all([
+    supabase
+      .from("clients")
+      .select("id", { count: "exact", head: true })
+      .or(`advisor_id.eq.${user.id},is_demo.eq.true`)
+      .gte("created_at", yearStartIso),
+    supabase.from("prospects").select("id", { count: "exact", head: true }).eq("advisor_id", user.id).gte("created_at", yearStartIso),
+  ]);
+
   const performers = clients
     .map((c) => ({ id: c.id, name: c.name, ...clientTrailing12m(c.accounts) }))
     .filter((p) => p.perf12m != null)
@@ -143,7 +155,9 @@ export default async function OficinaPage() {
         <div className="rounded-[10px] border border-(--line) bg-(--panel) p-5">
           <MetricRow label="Comisiones del trimestre" value={fmtUSD(demoMetrics?.comisiones_q ?? null)} />
           <MetricRow label="Flujo neto" value={fmtUSD(flujoNetoValue)} cls={flujoCls} />
-          <MetricRow label="Clientes" value={String(clients.length)} />
+          <MetricRow label="Clientes totales" value={String(clients.length)} />
+          <MetricRow label="Clientes nuevos (YTD)" value={String(newClientsYtd ?? 0)} />
+          <MetricRow label="Prospectos nuevos (YTD)" value={String(newProspectsYtd ?? 0)} />
         </div>
       </div>
 
