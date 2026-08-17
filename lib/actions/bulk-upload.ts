@@ -57,7 +57,8 @@ export async function saveExtractedSnapshot(clientId: string, accountId: string,
     .from("snapshots")
     .upsert(await toSnapshotRow(accountId, extraction), { onConflict: "account_id,month" });
   if (error) throw error;
-  revalidatePath(`/clientes/${clientId}`);
+  revalidatePath(`/clientes/${clientId}/consolidado`);
+  revalidatePath(`/clientes/${clientId}/cuentas/${accountId}`);
 }
 
 export async function createAccountAndSaveSnapshot(
@@ -77,6 +78,6 @@ export async function createAccountAndSaveSnapshot(
     onConflict: "account_id,month",
   });
   if (error) throw error;
-  revalidatePath(`/clientes/${clientId}`);
+  revalidatePath(`/clientes/${clientId}/consolidado`);
   return account.id;
 }

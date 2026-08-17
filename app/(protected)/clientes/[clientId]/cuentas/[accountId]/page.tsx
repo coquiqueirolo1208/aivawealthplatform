@@ -6,6 +6,7 @@ import { fmtCurrency, fmtPct, pctClass } from "@/lib/format";
 import { AllocationDoughnut } from "@/components/charts/allocation-doughnut";
 import { EvolutionLine } from "@/components/charts/evolution-line";
 import { SnapshotForm } from "@/components/clients/snapshot-form";
+import { AccountStatementUpload } from "@/components/clients/account-statement-upload";
 
 export default async function AccountPage({
   params,
@@ -149,6 +150,7 @@ export default async function AccountPage({
       ) : null}
 
       <div className="mt-4">
+        <AccountStatementUpload clientId={clientId} accountId={accountId} accountLabel={account.label} />
         <SnapshotForm
           clientId={clientId}
           accountId={accountId}

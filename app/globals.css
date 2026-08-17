@@ -137,7 +137,8 @@ html[data-theme="dark"] {
     cursor: not-allowed;
   }
   button.secondary,
-  select.secondary {
+  select.secondary,
+  a.secondary {
     background: transparent;
     border: 1px solid var(--line);
     color: var(--paper-dim);
@@ -145,6 +146,12 @@ html[data-theme="dark"] {
   a {
     color: inherit;
     text-decoration: none;
+  }
+  /* `<a class="secondary">` is used for link-styled-as-button CTAs (e.g. external
+     onboarding-form links) — needs button-like affordances a bare `a` doesn't get. */
+  a.secondary {
+    display: inline-block;
+    cursor: pointer;
   }
 
   /* One elevated surface per screen for the figure that matters most (see
