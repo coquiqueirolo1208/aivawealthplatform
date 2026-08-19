@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { RadarData } from "@/lib/finance/radar";
-import { AtrasoRow, DocumentoRow, RiesgoRow, TareaRow } from "./radar-rows";
+import { AtrasoRow, DocumentoRow, RiesgoRow, TareaRow, TodRow, UsSitusRow } from "./radar-rows";
 
 const MAX_ROWS = 5;
 
@@ -14,7 +14,13 @@ function VerTodos({ section, count }: { section: string; count: number }) {
 }
 
 export function RadarPanel({ data }: { data: RadarData }) {
-  const total = data.atrasos.length + data.riesgo.length + data.tareas.length + data.documentos.length;
+  const total =
+    data.atrasos.length +
+    data.riesgo.length +
+    data.tareas.length +
+    data.documentos.length +
+    data.usSitusRiesgo.length +
+    data.todPendiente.length;
 
   if (total === 0) {
     return (
@@ -76,6 +82,37 @@ export function RadarPanel({ data }: { data: RadarData }) {
             <RiesgoRow key={i} r={r} />
           ))}
           <VerTodos section="riesgo" count={data.riesgo.length} />
+        </div>
+      )}
+
+      {data.usSitusRiesgo.length > 0 && (
+        <div className="rounded-[10px] border p-5" style={{ borderColor: "var(--brick)", background: "var(--panel)" }}>
+          <h3 className="mb-1 font-heading text-base font-semibold" style={{ color: "var(--brick)" }}>
+            Riesgo de US state tax — exposición &gt;$60k ({data.usSitusRiesgo.length})
+          </h3>
+          <div className="mb-2 text-[11px] text-(--muted)">
+            Clientes con más de $60.000 en acciones/ETFs de EEUU en cuentas no jurídicas — puede disparar un US
+            state tax si el titular es persona física.
+          </div>
+          {data.usSitusRiesgo.slice(0, MAX_ROWS).map((u, i) => (
+            <UsSitusRow key={i} u={u} />
+          ))}
+          <VerTodos section="us-situs" count={data.usSitusRiesgo.length} />
+        </div>
+      )}
+
+      {data.todPendiente.length > 0 && (
+        <div className="rounded-[10px] border border-(--line) bg-(--panel) p-5">
+          <h3 className="mb-1 font-heading text-base font-semibold text-(--paper)">
+            Transfer on Death (TOD) pendiente ({data.todPendiente.length})
+          </h3>
+          <div className="mb-2 text-[11px] text-(--muted)">
+            Cuentas personales sin designación de beneficiario TOD — importante para la sucesión del cliente.
+          </div>
+          {data.todPendiente.slice(0, MAX_ROWS).map((t, i) => (
+            <TodRow key={i} t={t} />
+          ))}
+          <VerTodos section="tod" count={data.todPendiente.length} />
         </div>
       )}
     </div>

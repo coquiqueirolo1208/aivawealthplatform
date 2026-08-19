@@ -1,9 +1,23 @@
 import { describe, expect, it } from "vitest";
 import { buildRadarData, type RadarClientInput } from "./radar";
 import type { ModelPortfolio, Snapshot } from "./types";
+import type { AccountWithSnapshots } from "@/lib/queries/portfolio";
 
 function snap(overrides: Partial<Snapshot> = {}): Snapshot {
   return { valorActual: null, valorInicial: null, flujosNetos: null, flujosNetosYTD: null, asignacion: [], holdings: [], ...overrides };
+}
+
+function acc(overrides: Partial<AccountWithSnapshots> & Pick<AccountWithSnapshots, "id" | "label">): AccountWithSnapshots {
+  return {
+    custodian: null,
+    accountNumber: null,
+    comentario: null,
+    titularidad: null,
+    todCompletado: false,
+    todFecha: null,
+    snapshots: {},
+    ...overrides,
+  };
 }
 
 function baseClient(overrides: Partial<RadarClientInput> = {}): RadarClientInput {
@@ -28,9 +42,9 @@ describe("buildRadarData", () => {
   it("flags an account with no snapshots as sin_datos, and one lagging >=2 months as atrasado", () => {
     const client = baseClient({
       accounts: [
-        { id: "a1", label: "No Data", custodian: null, accountNumber: null, comentario: null, snapshots: {} },
-        { id: "a2", label: "Lagging", custodian: null, accountNumber: null, comentario: null, snapshots: { "2026-03": snap({ valorActual: 100 }) } },
-        { id: "a3", label: "Current", custodian: null, accountNumber: null, comentario: null, snapshots: { "2026-05": snap({ valorActual: 100 }) } },
+        acc({ id: "a1", label: "No Data" }),
+        acc({ id: "a2", label: "Lagging", snapshots: { "2026-03": snap({ valorActual: 100 }) } }),
+        acc({ id: "a3", label: "Current", snapshots: { "2026-05": snap({ valorActual: 100 }) } }),
       ],
     });
     const data = buildRadarData([client], new Map(), "2026-06-01");
@@ -44,12 +58,9 @@ describe("buildRadarData", () => {
   it("flags a >=12% concentration relative to that client's own total", () => {
     const client = baseClient({
       accounts: [
-        {
+        acc({
           id: "a1",
           label: "Acc",
-          custodian: null,
-          accountNumber: null,
-          comentario: null,
           snapshots: {
             "2026-05": snap({
               valorActual: 1000,
@@ -59,7 +70,7 @@ describe("buildRadarData", () => {
               ],
             }),
           },
-        },
+        }),
       ],
     });
     const data = buildRadarData([client], new Map(), "2026-06-01");
@@ -78,12 +89,9 @@ describe("buildRadarData", () => {
     const client = baseClient({
       riskProfile: { profile: "dinamico" },
       accounts: [
-        {
+        acc({
           id: "a1",
           label: "Acc",
-          custodian: null,
-          accountNumber: null,
-          comentario: null,
           snapshots: {
             "2026-05": snap({
               valorActual: 1000,
@@ -93,7 +101,7 @@ describe("buildRadarData", () => {
               ],
             }),
           },
-        },
+        }),
       ],
     });
     const data = buildRadarData([client], new Map([["dinamico", pf]]), "2026-06-01");
@@ -108,14 +116,11 @@ describe("buildRadarData", () => {
     const client = baseClient({
       riskProfile: { profile: "dinamico" },
       accounts: [
-        {
+        acc({
           id: "a1",
           label: "Acc",
-          custodian: null,
-          accountNumber: null,
-          comentario: null,
           snapshots: { "2026-05": snap({ valorActual: 1000, asignacion: [{ tipo: "Renta Variable", valor: 500 }, { tipo: "Renta Fija", valor: 500 }] }) },
-        },
+        }),
       ],
     });
     const data = buildRadarData([client], new Map([["dinamico", pf]]), "2026-06-01");
@@ -124,6 +129,47 @@ describe("buildRadarData", () => {
 
   it("returns all-empty with no flags across categories, sorted correctly with multiple clients", () => {
     const empty = buildRadarData([baseClient()], new Map(), "2026-06-01");
-    expect(empty).toEqual({ concentraciones: [], atrasos: [], riesgo: [], tareas: [], documentos: [] });
+    expect(empty).toEqual({
+      concentraciones: [],
+      atrasos: [],
+      riesgo: [],
+      tareas: [],
+      documentos: [],
+      usSitusRiesgo: [],
+      todPendiente: [],
+    });
+  });
+
+  it("flags a client over the US-situs threshold on a personal account, excludes juridica accounts", () => {
+    const client = baseClient({
+      accounts: [
+        acc({
+          id: "a1",
+          label: "Personal",
+          titularidad: "personal",
+          snapshots: { "2026-05": snap({ valorActual: 100000, holdings: [{ nombre: "Apple Inc", valor: 70000, retornoPct: null }] }) },
+        }),
+        acc({
+          id: "a2",
+          label: "LLC",
+          titularidad: "juridica",
+          snapshots: { "2026-05": snap({ valorActual: 200000, holdings: [{ nombre: "Microsoft Corp", valor: 150000, retornoPct: null }] }) },
+        }),
+      ],
+    });
+    const data = buildRadarData([client], new Map(), "2026-06-01");
+    expect(data.usSitusRiesgo).toEqual([{ clientId: "c1", clientName: "Client One", total: 70000 }]);
+  });
+
+  it("flags accounts missing TOD unless held by a legal entity", () => {
+    const client = baseClient({
+      accounts: [
+        acc({ id: "a1", label: "Personal sin TOD", titularidad: "personal", todCompletado: false }),
+        acc({ id: "a2", label: "Personal con TOD", titularidad: "personal", todCompletado: true }),
+        acc({ id: "a3", label: "LLC sin TOD", titularidad: "juridica", todCompletado: false }),
+      ],
+    });
+    const data = buildRadarData([client], new Map(), "2026-06-01");
+    expect(data.todPendiente).toEqual([{ clientId: "c1", clientName: "Client One", accountId: "a1", account: "Personal sin TOD" }]);
   });
 });

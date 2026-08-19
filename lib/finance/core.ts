@@ -139,7 +139,7 @@ export function computeHoldingsWithYTD(
   accountSnapshots: SnapshotsByMonth,
   snap: Snapshot,
   selMonth: string | null,
-): Array<{ nombre: string; valor: number; retornoPct: number | null; ytd: number | null }> {
+): Array<{ nombre: string; valor: number; retornoPct: number | null; ytd: number | null; usSitus?: boolean | null }> {
   const year = parseInt((selMonth || "").split("-")[0], 10);
   const baseSnap = accountSnapshots[year - 1 + "-12"];
   return (snap.holdings || []).map((h) => {
@@ -149,7 +149,7 @@ export function computeHoldingsWithYTD(
       const m = (baseSnap.holdings || []).find((x) => normalizeName(x.nombre) === key);
       if (m && m.valor) ytd = ((h.valor - m.valor) / m.valor) * 100;
     }
-    return { nombre: h.nombre, valor: h.valor, retornoPct: h.retornoPct, ytd };
+    return { nombre: h.nombre, valor: h.valor, retornoPct: h.retornoPct, ytd, usSitus: h.usSitus };
   });
 }
 

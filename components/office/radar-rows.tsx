@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { RadarData } from "@/lib/finance/radar";
 import type { PendingTask } from "@/lib/queries/tasks";
 import { markTaskDone } from "@/lib/actions/tasks";
+import { fmtUSD } from "@/lib/format";
 
 export function ClientLink({ clientId, clientName }: { clientId: string; clientName: string }) {
   return (
@@ -73,6 +74,33 @@ export function PendingTaskRow({ t }: { t: PendingTask }) {
           Marcar hecha
         </button>
       </form>
+    </div>
+  );
+}
+
+export function UsSitusRow({ u }: { u: RadarData["usSitusRiesgo"][number] }) {
+  return (
+    <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2.5 border-l-2 py-1.5 pl-3 text-[13px]" style={{ borderColor: "var(--brick)" }}>
+      <span>
+        <ClientLink clientId={u.clientId} clientName={u.clientName} /> — exposición a acciones/ETFs de EEUU
+      </span>
+      <span className="text-[11px] font-semibold" style={{ color: "var(--brick)" }}>
+        {fmtUSD(u.total)}
+      </span>
+    </div>
+  );
+}
+
+export function TodRow({ t }: { t: RadarData["todPendiente"][number] }) {
+  return (
+    <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2.5 py-1.5 text-[13px]">
+      <span>
+        <ClientLink clientId={t.clientId} clientName={t.clientName} /> —{" "}
+        <Link href={`/clientes/${t.clientId}/cuentas/${t.accountId}`} className="underline">
+          {t.account}
+        </Link>
+      </span>
+      <span className="text-[11px] text-(--muted)">Transfer on Death no completado</span>
     </div>
   );
 }

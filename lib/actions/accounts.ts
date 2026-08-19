@@ -68,3 +68,50 @@ export async function deleteSnapshot(clientId: string, accountId: string, month:
   if (error) throw error;
   revalidatePath(`/clientes/${clientId}`);
 }
+
+/** Titularidad + TOD are compliance metadata on the account itself, not tied to any one month's snapshot. */
+export async function updateAccountCompliance(clientId: string, accountId: string, formData: FormData) {
+  const titularidad = String(formData.get("titularidad") ?? "") || null;
+  const todCompletado = formData.get("todCompletado") === "on";
+  const todFecha = String(formData.get("todFecha") ?? "") || null;
+  const supabase = await requireSupabase();
+  const { error } = await supabase
+    .from("accounts")
+    .update({ titularidad, tod_completado: todCompletado, tod_fecha: todCompletado ? todFecha : null })
+    .eq("id", accountId);
+  if (error) throw error;
+  revalidatePath(`/clientes/${clientId}/cuentas/${accountId}`);
+  revalidatePath(`/clientes/${clientId}/consolidado`);
+  revalidatePath("/oficina");
+}
+
+/**
+ * Overrides a single holding's US-situs classification within one month's snapshot.
+ * Holdings are matched by exact `nombre` — the same JSONB blob a bulk-upload extraction
+ * (or manual edit) would produce, so there's no stable id to key on instead.
+ */
+export async function updateHoldingUsSitus(
+  clientId: string,
+  accountId: string,
+  month: string,
+  holdingNombre: string,
+  usSitus: boolean,
+) {
+  const supabase = await requireSupabase();
+  const { data: row, error: fetchError } = await supabase
+    .from("snapshots")
+    .select("holdings")
+    .eq("account_id", accountId)
+    .eq("month", month)
+    .single();
+  if (fetchError) throw fetchError;
+
+  const holdings = (row.holdings as Array<{ nombre: string; valor: number; retornoPct: number | null; usSitus?: boolean | null }>).map((h) =>
+    h.nombre === holdingNombre ? { ...h, usSitus } : h,
+  );
+  const { error } = await supabase.from("snapshots").update({ holdings }).eq("account_id", accountId).eq("month", month);
+  if (error) throw error;
+  revalidatePath(`/clientes/${clientId}/cuentas/${accountId}`);
+  revalidatePath(`/clientes/${clientId}/consolidado`);
+  revalidatePath("/oficina");
+}

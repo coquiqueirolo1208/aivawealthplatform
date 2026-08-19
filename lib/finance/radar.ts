@@ -4,6 +4,7 @@
 // (N+1); here the caller does that fan-out with a handful of flat queries instead.
 import { aggregateAllocation, monthDiff, normalizeName } from "./core";
 import { computePMTargetWeights } from "./investec";
+import { computeTodPendienteAccounts, computeUsSitusExposure } from "./us-situs";
 import type { AccountWithSnapshots } from "@/lib/queries/portfolio";
 import type { ModelPortfolio } from "./types";
 import { docStatusInfo, type DocumentLike } from "@/lib/documents";
@@ -31,6 +32,8 @@ export interface RadarData {
   riesgo: Array<{ clientId: string; clientName: string; perfil: string; rvActual: number; rvTarget: number; dev: number }>;
   tareas: Array<{ clientId: string; clientName: string; title: string; due: string }>;
   documentos: Array<{ clientId: string; clientName: string; tipo: string; estado: string; vencimiento: string | null }>;
+  usSitusRiesgo: Array<{ clientId: string; clientName: string; total: number }>;
+  todPendiente: Array<{ clientId: string; clientName: string; accountId: string; account: string }>;
 }
 
 export function buildRadarData(
@@ -38,7 +41,15 @@ export function buildRadarData(
   modelPortfolios: Map<string, ModelPortfolio | null>,
   todayIso: string,
 ): RadarData {
-  const all: RadarData = { concentraciones: [], atrasos: [], riesgo: [], tareas: [], documentos: [] };
+  const all: RadarData = {
+    concentraciones: [],
+    atrasos: [],
+    riesgo: [],
+    tareas: [],
+    documentos: [],
+    usSitusRiesgo: [],
+    todPendiente: [],
+  };
   const todayMonth = todayIso.slice(0, 7);
 
   for (const client of clients) {
@@ -110,6 +121,19 @@ export function buildRadarData(
       .forEach((task) => {
         all.tareas.push({ clientId: client.id, clientName: client.name, title: task.title, due: task.due! });
       });
+
+    const { total: usSitusTotal, overThreshold } = computeUsSitusExposure(
+      withData.map((x) => ({ titularidad: x.account.titularidad, holdings: x.snap!.holdings })),
+    );
+    if (overThreshold) {
+      all.usSitusRiesgo.push({ clientId: client.id, clientName: client.name, total: usSitusTotal });
+    }
+
+    computeTodPendienteAccounts(
+      client.accounts.map((a) => ({ accountId: a.id, accountLabel: a.label, titularidad: a.titularidad, todCompletado: a.todCompletado })),
+    ).forEach((a) => {
+      all.todPendiente.push({ clientId: client.id, clientName: client.name, accountId: a.accountId, account: a.accountLabel });
+    });
   }
 
   all.concentraciones.sort((a, b) => b.pct - a.pct);
@@ -117,5 +141,6 @@ export function buildRadarData(
   all.riesgo.sort((a, b) => Math.abs(b.dev) - Math.abs(a.dev));
   all.tareas.sort((a, b) => a.due.localeCompare(b.due));
   all.documentos.sort((a, b) => (a.vencimiento ?? "0").localeCompare(b.vencimiento ?? "0"));
+  all.usSitusRiesgo.sort((a, b) => b.total - a.total);
   return all;
 }

@@ -12,6 +12,13 @@ export interface Holding {
   nombre: string;
   valor: number;
   retornoPct: number | null;
+  /**
+   * Whether this position is a US-domiciled stock or ETF (US estate/state-tax situs
+   * for non-resident individuals holding it directly). Defaults to a name-based guess
+   * (see guessUsSitus) when a statement is first loaded — null/undefined means no
+   * guess has been made yet; the advisor can always override it by hand.
+   */
+  usSitus?: boolean | null;
 }
 
 export interface Snapshot {

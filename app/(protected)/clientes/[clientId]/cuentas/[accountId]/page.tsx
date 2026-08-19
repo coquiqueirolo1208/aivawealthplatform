@@ -1,12 +1,14 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getAdvisorClientsWithSnapshots } from "@/lib/queries/portfolio";
-import { computeCostsYTD, computeHoldingsWithYTD, computeMTD, computeYTD, latestMonth } from "@/lib/finance";
+import { computeCostsYTD, computeHoldingsWithYTD, computeMTD, computeYTD, isUsSitusHolding, latestMonth } from "@/lib/finance";
 import { fmtCurrency, fmtPct, pctClass } from "@/lib/format";
 import { AllocationDoughnut } from "@/components/charts/allocation-doughnut";
 import { EvolutionLine } from "@/components/charts/evolution-line";
 import { SnapshotForm } from "@/components/clients/snapshot-form";
 import { AccountStatementUpload } from "@/components/clients/account-statement-upload";
+import { AccountComplianceCard } from "@/components/clients/account-compliance-card";
+import { UsSitusCheckbox } from "@/components/clients/us-situs-checkbox";
 
 export default async function AccountPage({
   params,
@@ -42,6 +44,16 @@ export default async function AccountPage({
 
   return (
     <div>
+      <div className="mb-4">
+        <AccountComplianceCard
+          clientId={clientId}
+          accountId={accountId}
+          titularidad={account.titularidad}
+          todCompletado={account.todCompletado}
+          todFecha={account.todFecha}
+        />
+      </div>
+
       {!months.length ? (
         <div className="mb-4 rounded-[10px] border border-(--line) bg-(--panel) p-10 text-center text-[13.5px] text-(--muted)">
           Todavía no hay ningún estado de cuenta cargado para {account.label}. Cargá el primer mes abajo.
@@ -105,6 +117,7 @@ export default async function AccountPage({
                       <th className="text-right">Valor</th>
                       <th className="text-right">Retorno desde compra</th>
                       <th className="text-right">YTD</th>
+                      <th className="text-center">US situs</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -114,6 +127,15 @@ export default async function AccountPage({
                         <td className="text-right font-mono text-(--paper-dim)">{fmtCurrency(h.valor, snap.moneda)}</td>
                         <td className="text-right font-mono text-(--paper-dim)">{fmtPct(h.retornoPct)}</td>
                         <td className="text-right font-mono text-(--paper-dim)">{fmtPct(h.ytd)}</td>
+                        <td className="text-center">
+                          <UsSitusCheckbox
+                            clientId={clientId}
+                            accountId={accountId}
+                            month={selectedMonth}
+                            nombre={h.nombre}
+                            checked={isUsSitusHolding(h)}
+                          />
+                        </td>
                       </tr>
                     ))}
                   </tbody>

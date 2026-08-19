@@ -7,7 +7,9 @@ import { toUsdSnapshotsByMonth } from "@/lib/finance/currency";
 
 export async function loadRadarData(supabase: SupabaseClient<Database>, advisorId: string): Promise<RadarData> {
   const clients = await getAdvisorClientsWithSnapshots(supabase, advisorId);
-  if (!clients.length) return { concentraciones: [], atrasos: [], riesgo: [], tareas: [], documentos: [] };
+  if (!clients.length) {
+    return { concentraciones: [], atrasos: [], riesgo: [], tareas: [], documentos: [], usSitusRiesgo: [], todPendiente: [] };
+  }
   const clientIds = clients.map((c) => c.id);
 
   const [{ data: documents }, { data: riskProfiles }, { data: tasks }] = await Promise.all([

@@ -84,6 +84,9 @@ export interface Database {
           custodian: string | null;
           account_number: string | null;
           comentario: string | null;
+          titularidad: string | null;
+          tod_completado: boolean;
+          tod_fecha: string | null;
         };
         Insert: {
           id?: string;
@@ -92,6 +95,9 @@ export interface Database {
           custodian?: string | null;
           account_number?: string | null;
           comentario?: string | null;
+          titularidad?: string | null;
+          tod_completado?: boolean;
+          tod_fecha?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["accounts"]["Insert"]>;
         Relationships: [];

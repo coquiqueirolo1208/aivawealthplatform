@@ -10,6 +10,8 @@ import {
   buildPositionChanges,
   computeMTD,
   computePMTargetWeights,
+  computeTodPendienteAccounts,
+  computeUsSitusExposure,
   computeYTD,
   latestMonth,
   refineAssetAllocation,
@@ -98,6 +100,11 @@ export default async function ConsolidadoPage({ params }: { params: Promise<{ cl
   const { compras, ventas } = buildPositionChanges(accs.map((a) => ({ account: a, snapshots: a.snapshots })));
   const evolutionSeries = buildEvolutionSeries(accs);
 
+  const usSitus = computeUsSitusExposure(withData.map((x) => ({ titularidad: x.account.titularidad, holdings: x.snap!.holdings })));
+  const todPendiente = computeTodPendienteAccounts(
+    accs.map((a) => ({ accountId: a.id, accountLabel: a.label, titularidad: a.titularidad, todCompletado: a.todCompletado })),
+  );
+
   const benchmarkLevels = await getBenchmarkLevels(supabase);
 
   const { data: documents } = await supabase
@@ -146,6 +153,32 @@ export default async function ConsolidadoPage({ params }: { params: Promise<{ cl
       <div className="mb-4">
         <BulkUploadCard clientId={clientId} accounts={accs.map((a) => ({ id: a.id, label: a.label, custodian: a.custodian }))} />
       </div>
+
+      {(usSitus.overThreshold || todPendiente.length > 0) && (
+        <div className="mb-4 rounded-[10px] border p-4" style={{ borderColor: "var(--brick)", background: "var(--panel)" }}>
+          <h3 className="mb-1.5 font-heading text-[13.5px] font-semibold" style={{ color: "var(--brick)" }}>
+            ⚠ Alertas de compliance
+          </h3>
+          {usSitus.overThreshold && (
+            <p className="mb-1 text-[12.5px] text-(--paper-dim)">
+              Exposición a acciones/ETFs de EEUU de {fmtUSD(usSitus.total)} en cuentas no jurídicas — más de $60.000 puede
+              disparar un US state tax si el titular es persona física.
+            </p>
+          )}
+          {todPendiente.length > 0 && (
+            <p className="text-[12.5px] text-(--paper-dim)">
+              Transfer on Death (TOD) sin completar en:{" "}
+              {todPendiente.map((a, i) => (
+                <span key={a.accountId}>
+                  {i > 0 && ", "}
+                  {a.accountLabel}
+                </span>
+              ))}
+              .
+            </p>
+          )}
+        </div>
+      )}
 
       {!withData.length ? (
         <div className="rounded-[10px] border border-(--line) bg-(--panel) p-10 text-center text-[13.5px] text-(--muted)">
