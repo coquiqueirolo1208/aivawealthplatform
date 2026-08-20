@@ -1,6 +1,7 @@
 "use client";
 
 import { updateAccountCompliance } from "@/lib/actions/accounts";
+import { HelpTooltip } from "@/components/ui/help-tooltip";
 
 export function AccountComplianceCard({
   clientId,
@@ -32,7 +33,10 @@ export function AccountComplianceCard({
         </label>
         <label className="flex items-end gap-2 pb-2.5">
           <input type="checkbox" name="todCompletado" defaultChecked={todCompletado} />
-          <span className="text-[12.5px] text-(--paper)">TOD completado</span>
+          <span className="flex items-center text-[12.5px] text-(--paper)">
+            TOD completado
+            <HelpTooltip text="Transfer on Death: designación de beneficiario que evita que la cuenta pase por un proceso sucesorio." />
+          </span>
         </label>
         <label className="block">
           <span className="mb-1 block text-[11px] text-(--muted)">Fecha TOD completado</span>

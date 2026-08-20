@@ -45,3 +45,15 @@ export async function updateClientBirthday(clientId: string, fechaNacimiento: st
   revalidatePath(`/clientes/${clientId}/consolidado`);
   revalidatePath("/oficina");
 }
+
+/** Free-text label linking separate client records (e.g. spouses) into one household for AUM roll-ups. */
+export async function updateClientHousehold(clientId: string, householdLabel: string) {
+  const { supabase } = await requireAdvisorId();
+  const { error } = await supabase
+    .from("clients")
+    .update({ household_label: householdLabel.trim() || null })
+    .eq("id", clientId);
+  if (error) throw error;
+  revalidatePath(`/clientes/${clientId}/consolidado`);
+  revalidatePath("/clientes");
+}

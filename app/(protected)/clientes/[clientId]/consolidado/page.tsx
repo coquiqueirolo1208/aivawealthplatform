@@ -5,6 +5,7 @@ import { getFunds, getModelPortfolio } from "@/lib/queries/reference";
 import { getBenchmarkLevels } from "@/lib/queries/benchmark";
 import { getAdvisorLogoUrl } from "@/lib/queries/advisor";
 import {
+  accountTrailing12m,
   aggregateAllocation,
   buildAssetTable,
   buildPositionChanges,
@@ -19,6 +20,7 @@ import {
 } from "@/lib/finance";
 import { ACCOUNT_COLORS } from "@/lib/constants";
 import { fmtPct, fmtUSD, pctClass } from "@/lib/format";
+import { HelpTooltip } from "@/components/ui/help-tooltip";
 import { AllocationDoughnut } from "@/components/charts/allocation-doughnut";
 import { EvolutionLine, type EvolutionSeries } from "@/components/charts/evolution-line";
 import { DocumentsCard } from "@/components/clients/documents-card";
@@ -28,6 +30,8 @@ import { BenchmarkCard } from "@/components/clients/benchmark-card";
 import { BulkUploadCard } from "@/components/clients/bulk-upload-card";
 import { ExportPdfButton } from "@/components/clients/export-pdf-button";
 import { getTasksForClient } from "@/lib/queries/tasks";
+import { getNotesForClient } from "@/lib/queries/notes";
+import { NotesCard } from "@/components/clients/notes-card";
 
 function buildEvolutionSeries(accounts: AccountWithSnapshots[]): EvolutionSeries[] {
   const allMonths = Array.from(new Set(accounts.flatMap((a) => Object.keys(a.snapshots)))).sort();
@@ -94,6 +98,12 @@ export default async function ConsolidadoPage({ params }: { params: Promise<{ cl
   const ytdBlend = withYtd.length
     ? withYtd.reduce((s, o) => s + o.ytd! * o.value, 0) / withYtd.reduce((s, o) => s + o.value, 0)
     : null;
+  const withY1 = withData
+    .map((x) => accountTrailing12m(x.account.snapshots, x.month))
+    .filter((r): r is NonNullable<typeof r> => r != null);
+  const y1Blend = withY1.length
+    ? withY1.reduce((s, r) => s + r.value * r.weight, 0) / withY1.reduce((s, r) => s + r.weight, 0)
+    : null;
 
   const totals = aggregateAllocation(withData.map((x) => x.snap!));
   const assetTable = buildAssetTable(accs.map((a) => ({ account: a, snapshots: a.snapshots })));
@@ -112,6 +122,7 @@ export default async function ConsolidadoPage({ params }: { params: Promise<{ cl
     .select("id, tipo, estado, vencimiento, notas")
     .eq("client_id", clientId);
   const tasks = await getTasksForClient(supabase, clientId);
+  const notes = await getNotesForClient(supabase, clientId);
   const { data: riskProfileRow } = await supabase
     .from("risk_profiles")
     .select("*")
@@ -193,12 +204,14 @@ export default async function ConsolidadoPage({ params }: { params: Promise<{ cl
                 total,
                 mtdBlend,
                 ytdBlend,
+                y1Blend,
                 accounts: latestByAccount.map((x) => ({
                   label: x.account.label,
                   month: x.month,
                   valor: x.snap?.valorActual ?? null,
                   mtd: computeMTD(x.snap).value,
                   ytd: computeYTD(x.account.snapshots, x.month, x.snap).value,
+                  y1: accountTrailing12m(x.account.snapshots, x.month)?.value ?? null,
                 })),
                 allocation: Object.entries(totals).map(([tipo, valor]) => ({ tipo, valor })),
                 positions: assetTable.map((r) => ({ name: r.name, total: r.total, mtd: r.mtd, ytd: r.ytd })),
@@ -217,11 +230,39 @@ export default async function ConsolidadoPage({ params }: { params: Promise<{ cl
                 <span style={{ color: pctClass(ytdBlend) === "pos" ? "var(--teal)" : pctClass(ytdBlend) === "neg" ? "var(--brick)" : "var(--paper-dim)" }}>
                   {fmtPct(ytdBlend)} <span className="font-sans text-[11.5px] font-normal text-(--muted)">YTD</span>
                 </span>
+                <span style={{ color: pctClass(y1Blend) === "pos" ? "var(--teal)" : pctClass(y1Blend) === "neg" ? "var(--brick)" : "var(--paper-dim)" }}>
+                  {fmtPct(y1Blend)} <span className="font-sans text-[11.5px] font-normal text-(--muted)">1A</span>
+                </span>
               </div>
             </div>
             <div className="rounded-[10px] border border-(--line) bg-(--panel) p-5">
-              <MetricRow label="Rent. MTD ponderada" value={fmtPct(mtdBlend)} cls={pctClass(mtdBlend)} />
-              <MetricRow label="Rent. YTD ponderada" value={fmtPct(ytdBlend)} cls={pctClass(ytdBlend)} />
+              <MetricRow
+                label={
+                  <>
+                    Rent. MTD ponderada <HelpTooltip text="Rendimiento del mes en curso (Month-to-Date), ponderado por el valor de cada cuenta." />
+                  </>
+                }
+                value={fmtPct(mtdBlend)}
+                cls={pctClass(mtdBlend)}
+              />
+              <MetricRow
+                label={
+                  <>
+                    Rent. YTD ponderada <HelpTooltip text="Rendimiento acumulado desde el 1° de enero (Year-to-Date), ponderado por el valor de cada cuenta." />
+                  </>
+                }
+                value={fmtPct(ytdBlend)}
+                cls={pctClass(ytdBlend)}
+              />
+              <MetricRow
+                label={
+                  <>
+                    Rent. 1 año ponderada <HelpTooltip text="Rendimiento de los últimos 12 meses, ponderado por el valor de cada cuenta." />
+                  </>
+                }
+                value={fmtPct(y1Blend)}
+                cls={pctClass(y1Blend)}
+              />
               <MetricRow label="Cuentas" value={String(accs.length)} />
             </div>
           </div>
@@ -248,12 +289,14 @@ export default async function ConsolidadoPage({ params }: { params: Promise<{ cl
                     <th className="text-right">Valor</th>
                     <th className="text-right">MTD</th>
                     <th className="text-right">YTD</th>
+                    <th className="text-right">1A</th>
                   </tr>
                 </thead>
                 <tbody>
                   {latestByAccount.map((x) => {
                     const mtd = computeMTD(x.snap);
                     const ytd = computeYTD(x.account.snapshots, x.month, x.snap);
+                    const y1 = accountTrailing12m(x.account.snapshots, x.month);
                     return (
                       <tr key={x.account.id} className="border-t border-(--line)">
                         <td className="py-2 text-(--paper)">{x.account.label}</td>
@@ -266,6 +309,9 @@ export default async function ConsolidadoPage({ params }: { params: Promise<{ cl
                         </td>
                         <td className={`text-right font-mono ${pctClass(ytd.value) === "pos" ? "text-(--teal)" : pctClass(ytd.value) === "neg" ? "text-(--brick)" : "text-(--paper-dim)"}`}>
                           {fmtPct(ytd.value)}
+                        </td>
+                        <td className={`text-right font-mono ${pctClass(y1?.value ?? null) === "pos" ? "text-(--teal)" : pctClass(y1?.value ?? null) === "neg" ? "text-(--brick)" : "text-(--paper-dim)"}`}>
+                          {fmtPct(y1?.value ?? null)}
                         </td>
                       </tr>
                     );
@@ -345,6 +391,10 @@ export default async function ConsolidadoPage({ params }: { params: Promise<{ cl
         />
       </div>
 
+      <div className="mt-4">
+        <NotesCard clientId={clientId} notes={notes} />
+      </div>
+
       {riskDeviation && (
         <div className="mt-4 rounded-[10px] border border-(--line) bg-(--panel) p-5">
           <h3 className="mb-1 font-heading text-base font-semibold text-(--paper)">Desvío vs. perfil de riesgo</h3>
@@ -388,11 +438,11 @@ export default async function ConsolidadoPage({ params }: { params: Promise<{ cl
   );
 }
 
-function MetricRow({ label, value, cls }: { label: string; value: string; cls?: string }) {
+function MetricRow({ label, value, cls }: { label: React.ReactNode; value: string; cls?: string }) {
   const color = cls === "pos" ? "var(--teal)" : cls === "neg" ? "var(--brick)" : "var(--paper)";
   return (
     <div className="row-hover flex items-center justify-between border-t border-(--line) py-2.5 first:border-t-0 first:pt-0">
-      <span className="text-[12px] text-(--muted)">{label}</span>
+      <span className="flex items-center text-[12px] text-(--muted)">{label}</span>
       <span className="font-mono text-[14px] font-semibold" style={{ color }}>
         {value}
       </span>

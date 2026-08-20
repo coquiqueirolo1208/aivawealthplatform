@@ -1,7 +1,15 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getAdvisorClientsWithSnapshots } from "@/lib/queries/portfolio";
-import { computeCostsYTD, computeHoldingsWithYTD, computeMTD, computeYTD, isUsSitusHolding, latestMonth } from "@/lib/finance";
+import {
+  accountTrailing12m,
+  computeCostsYTD,
+  computeHoldingsWithYTD,
+  computeMTD,
+  computeYTD,
+  isUsSitusHolding,
+  latestMonth,
+} from "@/lib/finance";
 import { fmtCurrency, fmtPct, pctClass } from "@/lib/format";
 import { AllocationDoughnut } from "@/components/charts/allocation-doughnut";
 import { EvolutionLine } from "@/components/charts/evolution-line";
@@ -9,6 +17,7 @@ import { SnapshotForm } from "@/components/clients/snapshot-form";
 import { AccountStatementUpload } from "@/components/clients/account-statement-upload";
 import { AccountComplianceCard } from "@/components/clients/account-compliance-card";
 import { UsSitusCheckbox } from "@/components/clients/us-situs-checkbox";
+import { HelpTooltip } from "@/components/ui/help-tooltip";
 
 export default async function AccountPage({
   params,
@@ -37,6 +46,7 @@ export default async function AccountPage({
 
   const mtd = computeMTD(snap);
   const ytd = computeYTD(account.snapshots, selectedMonth || null, snap);
+  const y1 = accountTrailing12m(account.snapshots, selectedMonth || null);
   const costsYtd = computeCostsYTD(account.snapshots, selectedMonth || null);
   const holdings = snap ? computeHoldingsWithYTD(account.snapshots, snap, selectedMonth) : [];
 
@@ -62,8 +72,33 @@ export default async function AccountPage({
         <>
           <div className="mb-4 grid grid-cols-[repeat(auto-fit,minmax(155px,1fr))] gap-3">
             <Kpi label={`Valor (${selectedMonth})`} value={fmtCurrency(snap.valorActual, snap.moneda)} />
-            <Kpi label="Rent. MTD" value={fmtPct(mtd.value)} cls={pctClass(mtd.value)} />
-            <Kpi label="Rent. YTD" value={fmtPct(ytd.value)} cls={pctClass(ytd.value)} />
+            <Kpi
+              label={
+                <>
+                  Rent. MTD <HelpTooltip text="Rendimiento del mes en curso (Month-to-Date)." />
+                </>
+              }
+              value={fmtPct(mtd.value)}
+              cls={pctClass(mtd.value)}
+            />
+            <Kpi
+              label={
+                <>
+                  Rent. YTD <HelpTooltip text="Rendimiento acumulado desde el 1° de enero (Year-to-Date)." />
+                </>
+              }
+              value={fmtPct(ytd.value)}
+              cls={pctClass(ytd.value)}
+            />
+            <Kpi
+              label={
+                <>
+                  Rent. 1A <HelpTooltip text="Rendimiento de los últimos 12 meses." />
+                </>
+              }
+              value={fmtPct(y1?.value ?? null)}
+              cls={pctClass(y1?.value ?? null)}
+            />
             <Kpi label="Costos YTD" value={costsYtd.value != null ? fmtCurrency(costsYtd.value, snap.moneda) : "—"} />
           </div>
           {snap.moneda && snap.moneda !== "USD" && (
@@ -117,7 +152,12 @@ export default async function AccountPage({
                       <th className="text-right">Valor</th>
                       <th className="text-right">Retorno desde compra</th>
                       <th className="text-right">YTD</th>
-                      <th className="text-center">US situs</th>
+                      <th className="text-center">
+                        <span className="inline-flex items-center">
+                          US situs
+                          <HelpTooltip text="Acción/ETF domiciliado en EEUU — precargado por nombre, confirmá o corregí a mano." />
+                        </span>
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -185,11 +225,11 @@ export default async function AccountPage({
   );
 }
 
-function Kpi({ label, value, cls }: { label: string; value: string; cls?: string }) {
+function Kpi({ label, value, cls }: { label: React.ReactNode; value: string; cls?: string }) {
   const color = cls === "pos" ? "var(--teal)" : cls === "neg" ? "var(--brick)" : "var(--paper)";
   return (
     <div className="rounded-[10px] border border-(--line) bg-(--panel-2) px-4 py-3.5">
-      <div className="mb-1.5 text-[11px] tracking-[0.6px] text-(--muted) uppercase">{label}</div>
+      <div className="mb-1.5 flex items-center text-[11px] tracking-[0.6px] text-(--muted) uppercase">{label}</div>
       <div className="font-mono text-xl font-semibold" style={{ color }}>
         {value}
       </div>

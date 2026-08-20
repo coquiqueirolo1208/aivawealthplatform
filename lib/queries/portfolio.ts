@@ -19,6 +19,8 @@ export interface ClientWithAccounts {
   id: string;
   name: string;
   isDemo: boolean;
+  householdLabel: string | null;
+  createdAt: string;
   accounts: AccountWithSnapshots[];
 }
 
@@ -35,7 +37,7 @@ export async function getAdvisorClientsWithSnapshots(
 ): Promise<ClientWithAccounts[]> {
   const { data: clients, error: clientsError } = await supabase
     .from("clients")
-    .select("id, name, is_demo")
+    .select("id, name, is_demo, household_label, created_at")
     .or(`advisor_id.eq.${advisorId},is_demo.eq.true`)
     .order("name");
   if (clientsError) throw clientsError;
@@ -81,6 +83,8 @@ export async function getAdvisorClientsWithSnapshots(
     id: c.id,
     name: c.name,
     isDemo: c.is_demo,
+    householdLabel: c.household_label,
+    createdAt: c.created_at,
     accounts: accountsByClient.get(c.id) ?? [],
   }));
 }

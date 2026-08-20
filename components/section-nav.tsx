@@ -10,7 +10,7 @@ const SECTIONS = [
   { href: "/research", label: "Research" },
 ] as const;
 
-export function SectionNav() {
+export function SectionNav({ alertCount = 0 }: { alertCount?: number }) {
   const pathname = usePathname();
   if (pathname === "/" || pathname === "/login") return null;
 
@@ -34,6 +34,14 @@ export function SectionNav() {
               style={{ background: "var(--ink)", opacity: active ? 1 : 0.55 }}
             />
             {s.label}
+            {s.href === "/oficina" && alertCount > 0 && (
+              <span
+                className="ml-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1 font-mono text-[10.5px] font-bold"
+                style={{ background: "var(--brick)", color: "#fff" }}
+              >
+                {alertCount > 99 ? "99+" : alertCount}
+              </span>
+            )}
           </Link>
         );
       })}

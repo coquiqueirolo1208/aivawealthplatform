@@ -8,14 +8,24 @@ import { toUsdSnapshotsByMonth } from "@/lib/finance/currency";
 export async function loadRadarData(supabase: SupabaseClient<Database>, advisorId: string): Promise<RadarData> {
   const clients = await getAdvisorClientsWithSnapshots(supabase, advisorId);
   if (!clients.length) {
-    return { concentraciones: [], atrasos: [], riesgo: [], tareas: [], documentos: [], usSitusRiesgo: [], todPendiente: [] };
+    return {
+      concentraciones: [],
+      atrasos: [],
+      riesgo: [],
+      tareas: [],
+      documentos: [],
+      usSitusRiesgo: [],
+      todPendiente: [],
+      contactoPendiente: [],
+    };
   }
   const clientIds = clients.map((c) => c.id);
 
-  const [{ data: documents }, { data: riskProfiles }, { data: tasks }] = await Promise.all([
+  const [{ data: documents }, { data: riskProfiles }, { data: tasks }, { data: notes }] = await Promise.all([
     supabase.from("client_documents").select("client_id, tipo, estado, vencimiento").in("client_id", clientIds),
     supabase.from("risk_profiles").select("client_id, profile").in("client_id", clientIds),
     supabase.from("tasks").select("client_id, title, due, done").in("client_id", clientIds),
+    supabase.from("client_notes").select("client_id, created_at").in("client_id", clientIds),
   ]);
 
   const docsByClient = new Map<string, Array<{ tipo: string; estado: string; vencimiento: string | null }>>();
@@ -30,6 +40,11 @@ export async function loadRadarData(supabase: SupabaseClient<Database>, advisorI
     if (!tasksByClient.has(t.client_id)) tasksByClient.set(t.client_id, []);
     tasksByClient.get(t.client_id)!.push({ title: t.title, due: t.due, done: t.done });
   });
+  const lastNoteByClient = new Map<string, string>();
+  (notes ?? []).forEach((n) => {
+    const current = lastNoteByClient.get(n.client_id);
+    if (!current || n.created_at > current) lastNoteByClient.set(n.client_id, n.created_at);
+  });
 
   const distinctProfiles = Array.from(new Set(riskByClient.values()));
   const modelPortfolios = new Map<string, Awaited<ReturnType<typeof getModelPortfolio>>>();
@@ -42,6 +57,8 @@ export async function loadRadarData(supabase: SupabaseClient<Database>, advisorI
   const input: RadarClientInput[] = clients.map((c) => ({
     id: c.id,
     name: c.name,
+    createdAt: c.createdAt,
+    lastNoteAt: lastNoteByClient.get(c.id) ?? null,
     // Radar's dollar-based checks (risk-deviation weighting, etc.) need every account
     // in the same currency — convert per snapshot's own month rate before comparing.
     accounts: c.accounts.map((a) => ({ ...a, snapshots: toUsdSnapshotsByMonth(a.snapshots) })),

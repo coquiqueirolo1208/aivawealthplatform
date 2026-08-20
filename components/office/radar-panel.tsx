@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { RadarData } from "@/lib/finance/radar";
-import { AtrasoRow, DocumentoRow, RiesgoRow, TareaRow, TodRow, UsSitusRow } from "./radar-rows";
+import { AtrasoRow, ContactoRow, DocumentoRow, RiesgoRow, TareaRow, TodRow, UsSitusRow } from "./radar-rows";
 
 const MAX_ROWS = 5;
 
@@ -20,7 +20,8 @@ export function RadarPanel({ data }: { data: RadarData }) {
     data.tareas.length +
     data.documentos.length +
     data.usSitusRiesgo.length +
-    data.todPendiente.length;
+    data.todPendiente.length +
+    data.contactoPendiente.length;
 
   if (total === 0) {
     return (
@@ -113,6 +114,21 @@ export function RadarPanel({ data }: { data: RadarData }) {
             <TodRow key={i} t={t} />
           ))}
           <VerTodos section="tod" count={data.todPendiente.length} />
+        </div>
+      )}
+
+      {data.contactoPendiente.length > 0 && (
+        <div className="rounded-[10px] border border-(--line) bg-(--panel) p-5">
+          <h3 className="mb-1 font-heading text-base font-semibold text-(--paper)">
+            Sin contacto reciente ({data.contactoPendiente.length})
+          </h3>
+          <div className="mb-2 text-[11px] text-(--muted)">
+            Sin ninguna nota registrada en más de 90 días — para no perder el vínculo.
+          </div>
+          {data.contactoPendiente.slice(0, MAX_ROWS).map((c, i) => (
+            <ContactoRow key={i} c={c} />
+          ))}
+          <VerTodos section="contacto" count={data.contactoPendiente.length} />
         </div>
       )}
     </div>

@@ -11,7 +11,8 @@ export interface ConsolidadoPdfData {
   total: number;
   mtdBlend: number | null;
   ytdBlend: number | null;
-  accounts: Array<{ label: string; month: string | null; valor: number | null; mtd: number | null; ytd: number | null }>;
+  y1Blend: number | null;
+  accounts: Array<{ label: string; month: string | null; valor: number | null; mtd: number | null; ytd: number | null; y1: number | null }>;
   allocation: Array<{ tipo: string; valor: number }>;
   positions: Array<{ name: string; total: number; mtd: number | null; ytd: number | null }>;
   /** Signed Supabase Storage URL for the exporting advisor's own logo, if they uploaded one. */
@@ -87,6 +88,7 @@ export async function exportConsolidadoToPdf(data: ConsolidadoPdfData) {
     `Patrimonio consolidado: ${fmtUSD(data.total)}`,
     `Rentabilidad MTD ponderada: ${fmtPct(data.mtdBlend)}`,
     `Rentabilidad YTD ponderada: ${fmtPct(data.ytdBlend)}`,
+    `Rentabilidad 1 año ponderada: ${fmtPct(data.y1Blend)}`,
   ];
   summaryLines.forEach((line) => {
     doc.text(line, 40, y);
@@ -100,9 +102,9 @@ export async function exportConsolidadoToPdf(data: ConsolidadoPdfData) {
   y += 8;
   y = drawTable(doc, {
     startY: y,
-    head: ["Cuenta", "Mes", "Valor", "MTD", "YTD"],
-    rows: data.accounts.map((a) => [a.label, a.month ?? "—", fmtUSD(a.valor), fmtPct(a.mtd), fmtPct(a.ytd)]),
-    colWidths: [160, 60, 100, 80, 80],
+    head: ["Cuenta", "Mes", "Valor", "MTD", "YTD", "1A"],
+    rows: data.accounts.map((a) => [a.label, a.month ?? "—", fmtUSD(a.valor), fmtPct(a.mtd), fmtPct(a.ytd), fmtPct(a.y1)]),
+    colWidths: [140, 55, 90, 70, 70, 70],
     pageHeight: PAGE_H,
   });
   y += 20;

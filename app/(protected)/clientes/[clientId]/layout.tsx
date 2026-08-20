@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { ClientTabs } from "@/components/clients/client-tabs";
 import { BirthdayField } from "@/components/clients/birthday-field";
+import { HouseholdField } from "@/components/clients/household-field";
 
 export default async function ClientLayout({
   children,
@@ -19,7 +20,11 @@ export default async function ClientLayout({
 
   // RLS scopes this to the current advisor — a client owned by someone else (or a
   // bad id) simply returns no row here, which we treat as not found.
-  const { data: client } = await supabase.from("clients").select("id, name, fecha_nacimiento").eq("id", clientId).maybeSingle();
+  const { data: client } = await supabase
+    .from("clients")
+    .select("id, name, fecha_nacimiento, household_label")
+    .eq("id", clientId)
+    .maybeSingle();
   if (!client) notFound();
 
   const { data: accounts } = await supabase
@@ -32,7 +37,10 @@ export default async function ClientLayout({
     <div>
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
         <div className="font-heading text-xl font-semibold text-(--paper)">{client.name}</div>
-        <BirthdayField clientId={clientId} fechaNacimiento={client.fecha_nacimiento} />
+        <div className="flex flex-wrap items-center gap-1.5">
+          <HouseholdField clientId={clientId} householdLabel={client.household_label} />
+          <BirthdayField clientId={clientId} fechaNacimiento={client.fecha_nacimiento} />
+        </div>
       </div>
       <ClientTabs clientId={clientId} accounts={accounts ?? []} />
       {children}

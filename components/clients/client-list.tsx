@@ -11,6 +11,7 @@ export interface ClientRow {
   name: string;
   aum: number | null;
   nCustodios: number;
+  householdLabel: string | null;
 }
 
 export function ClientList({ clients }: { clients: ClientRow[] }) {
@@ -20,6 +21,16 @@ export function ClientList({ clients }: { clients: ClientRow[] }) {
   const [pending, startTransition] = useTransition();
 
   const filtered = clients.filter((c) => c.name.toUpperCase().includes(search.trim().toUpperCase()));
+
+  const households = new Map<string, { members: ClientRow[]; totalAum: number }>();
+  clients.forEach((c) => {
+    if (!c.householdLabel) return;
+    if (!households.has(c.householdLabel)) households.set(c.householdLabel, { members: [], totalAum: 0 });
+    const h = households.get(c.householdLabel)!;
+    h.members.push(c);
+    h.totalAum += c.aum ?? 0;
+  });
+  const multiHouseholds = Array.from(households.entries()).filter(([, h]) => h.members.length >= 2);
 
   return (
     <div className="rounded-[10px] border border-(--line) bg-(--panel) p-5">
@@ -36,6 +47,22 @@ export function ClientList({ clients }: { clients: ClientRow[] }) {
         onChange={(e) => setSearch(e.target.value)}
         className="my-3.5 w-full"
       />
+
+      {multiHouseholds.length > 0 && (
+        <div className="mb-3 flex flex-col gap-1.5">
+          {multiHouseholds.map(([label, h]) => (
+            <div
+              key={label}
+              className="rounded-lg px-3.5 py-2 text-[12px] text-(--paper-dim)"
+              style={{ background: "var(--panel-2)", border: "1px solid var(--line)" }}
+            >
+              👪 <strong className="text-(--paper)">{label}</strong> — AUM combinado {fmtUSD(h.totalAum)} ({h.members.length}{" "}
+              clientes: {h.members.map((m) => m.name).join(", ")})
+            </div>
+          ))}
+        </div>
+      )}
+
       <div>
         {filtered.length === 0 ? (
           <div className="p-10 text-center text-[13.5px] text-(--muted)">No hay clientes que coincidan.</div>
@@ -46,9 +73,12 @@ export function ClientList({ clients }: { clients: ClientRow[] }) {
               className="row-hover mb-2 flex items-center justify-between rounded-lg px-3.5 py-3 text-[13px]"
               style={{ background: "var(--panel-2)", border: "1px solid var(--line)" }}
             >
-              <Link href={`/clientes/${c.id}`} className="text-(--paper)">
-                {c.name}
-              </Link>
+              <span>
+                <Link href={`/clientes/${c.id}`} className="text-(--paper)">
+                  {c.name}
+                </Link>
+                {c.householdLabel && <span className="ml-1.5 text-[10.5px] text-(--muted)">👪 {c.householdLabel}</span>}
+              </span>
               <span className="flex items-center gap-3.5">
                 <span className="font-mono text-[11.5px] text-(--muted)">
                   {c.aum != null ? fmtUSD(c.aum) : "—"} · {c.nCustodios === 1 ? "1 custodio" : `${c.nCustodios} custodios`}

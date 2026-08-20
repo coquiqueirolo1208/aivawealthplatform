@@ -5,6 +5,7 @@
 import { aggregateAllocation, monthDiff, normalizeName } from "./core";
 import { computePMTargetWeights } from "./investec";
 import { computeTodPendienteAccounts, computeUsSitusExposure } from "./us-situs";
+import { computeStaleContacts } from "./contact";
 import type { AccountWithSnapshots } from "@/lib/queries/portfolio";
 import type { ModelPortfolio } from "./types";
 import { docStatusInfo, type DocumentLike } from "@/lib/documents";
@@ -12,6 +13,8 @@ import { docStatusInfo, type DocumentLike } from "@/lib/documents";
 export interface RadarClientInput {
   id: string;
   name: string;
+  createdAt: string;
+  lastNoteAt: string | null;
   accounts: AccountWithSnapshots[];
   documents: Array<DocumentLike & { tipo: string }>;
   riskProfile: { profile: string } | null;
@@ -34,6 +37,7 @@ export interface RadarData {
   documentos: Array<{ clientId: string; clientName: string; tipo: string; estado: string; vencimiento: string | null }>;
   usSitusRiesgo: Array<{ clientId: string; clientName: string; total: number }>;
   todPendiente: Array<{ clientId: string; clientName: string; accountId: string; account: string }>;
+  contactoPendiente: Array<{ clientId: string; clientName: string; lastContactAt: string; daysSince: number }>;
 }
 
 export function buildRadarData(
@@ -49,6 +53,7 @@ export function buildRadarData(
     documentos: [],
     usSitusRiesgo: [],
     todPendiente: [],
+    contactoPendiente: [],
   };
   const todayMonth = todayIso.slice(0, 7);
 
@@ -136,6 +141,11 @@ export function buildRadarData(
     });
   }
 
+  all.contactoPendiente = computeStaleContacts(
+    clients.map((c) => ({ clientId: c.id, clientName: c.name, clientCreatedAt: c.createdAt, lastNoteAt: c.lastNoteAt })),
+    todayIso,
+  );
+
   all.concentraciones.sort((a, b) => b.pct - a.pct);
   all.atrasos.sort((a, b) => (b.mesesAtraso ?? 99) - (a.mesesAtraso ?? 99));
   all.riesgo.sort((a, b) => Math.abs(b.dev) - Math.abs(a.dev));
@@ -143,4 +153,17 @@ export function buildRadarData(
   all.documentos.sort((a, b) => (a.vencimiento ?? "0").localeCompare(b.vencimiento ?? "0"));
   all.usSitusRiesgo.sort((a, b) => b.total - a.total);
   return all;
+}
+
+/** Total count across every Radar category — used for the nav badge and similar at-a-glance summaries. */
+export function countRadarAlerts(data: RadarData): number {
+  return (
+    data.tareas.length +
+    data.documentos.length +
+    data.atrasos.length +
+    data.riesgo.length +
+    data.usSitusRiesgo.length +
+    data.todPendiente.length +
+    data.contactoPendiente.length
+  );
 }

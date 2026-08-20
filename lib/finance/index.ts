@@ -4,6 +4,7 @@ export * from "./currency";
 export * from "./office";
 export * from "./birthdays";
 export * from "./us-situs";
+export * from "./contact";
 export * from "./funds";
 export * from "./benchmark";
 export * from "./investec";

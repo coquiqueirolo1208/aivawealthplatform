@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildRadarData, type RadarClientInput } from "./radar";
+import { buildRadarData, countRadarAlerts, type RadarClientInput } from "./radar";
 import type { ModelPortfolio, Snapshot } from "./types";
 import type { AccountWithSnapshots } from "@/lib/queries/portfolio";
 
@@ -21,7 +21,19 @@ function acc(overrides: Partial<AccountWithSnapshots> & Pick<AccountWithSnapshot
 }
 
 function baseClient(overrides: Partial<RadarClientInput> = {}): RadarClientInput {
-  return { id: "c1", name: "Client One", accounts: [], documents: [], riskProfile: null, tasks: [], ...overrides };
+  return {
+    id: "c1",
+    name: "Client One",
+    // Defaults to "created today" with no notes yet, so tests that don't care about
+    // contactoPendiente aren't accidentally flagged by it.
+    createdAt: "2026-06-01T00:00:00.000Z",
+    lastNoteAt: null,
+    accounts: [],
+    documents: [],
+    riskProfile: null,
+    tasks: [],
+    ...overrides,
+  };
 }
 
 describe("buildRadarData", () => {
@@ -137,6 +149,7 @@ describe("buildRadarData", () => {
       documentos: [],
       usSitusRiesgo: [],
       todPendiente: [],
+      contactoPendiente: [],
     });
   });
 
@@ -171,5 +184,31 @@ describe("buildRadarData", () => {
     });
     const data = buildRadarData([client], new Map(), "2026-06-01");
     expect(data.todPendiente).toEqual([{ clientId: "c1", clientName: "Client One", accountId: "a1", account: "Personal sin TOD" }]);
+  });
+
+  it("flags a client with no recent contact, using the last note when there is one", () => {
+    const client = baseClient({ createdAt: "2020-01-01T00:00:00.000Z", lastNoteAt: "2026-01-01T00:00:00.000Z" });
+    const data = buildRadarData([client], new Map(), "2026-06-01");
+    expect(data.contactoPendiente).toHaveLength(1);
+    expect(data.contactoPendiente[0].clientId).toBe("c1");
+  });
+});
+
+describe("countRadarAlerts", () => {
+  it("sums every category", () => {
+    const client = baseClient({
+      tasks: [{ title: "T", due: "2026-01-01", done: false }],
+      documents: [{ tipo: "KYC", estado: "pendiente", vencimiento: null }],
+      accounts: [acc({ id: "a1", label: "No Data" })],
+    });
+    const data = buildRadarData([client], new Map(), "2026-06-01");
+    expect(countRadarAlerts(data)).toBe(
+      data.tareas.length + data.documentos.length + data.atrasos.length + data.todPendiente.length,
+    );
+  });
+
+  it("is zero when every category is empty", () => {
+    const data = buildRadarData([baseClient()], new Map(), "2026-06-01");
+    expect(countRadarAlerts(data)).toBe(0);
   });
 });

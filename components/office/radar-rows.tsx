@@ -105,6 +105,17 @@ export function TodRow({ t }: { t: RadarData["todPendiente"][number] }) {
   );
 }
 
+export function ContactoRow({ c }: { c: RadarData["contactoPendiente"][number] }) {
+  return (
+    <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2.5 py-1.5 text-[13px]">
+      <span>
+        <ClientLink clientId={c.clientId} clientName={c.clientName} />
+      </span>
+      <span className="text-[11px] text-(--muted)">sin contacto hace {c.daysSince} días</span>
+    </div>
+  );
+}
+
 export function RiesgoRow({ r }: { r: RadarData["riesgo"][number] }) {
   return (
     <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2.5 py-1.5 text-[13px]">

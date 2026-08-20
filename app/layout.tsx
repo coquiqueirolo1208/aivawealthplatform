@@ -4,6 +4,8 @@ import { montserrat, inter, ibmPlexMono } from "@/lib/fonts";
 import { SiteHeader } from "@/components/site-header";
 import { SectionNav } from "@/components/section-nav";
 import { createClient } from "@/lib/supabase/server";
+import { loadRadarData } from "@/lib/queries/radar";
+import { countRadarAlerts } from "@/lib/finance/radar";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -18,6 +20,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  const alertCount = user ? countRadarAlerts(await loadRadarData(supabase, user.id)) : 0;
 
   return (
     <html
@@ -28,7 +31,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full">
         <div className="mx-auto max-w-[1180px] px-5 pt-7 pb-15">
           <SiteHeader initialTheme={theme} userEmail={user?.email ?? null} />
-          <SectionNav />
+          <SectionNav alertCount={alertCount} />
           {children}
         </div>
       </body>

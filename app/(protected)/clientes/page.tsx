@@ -25,7 +25,7 @@ export default async function ClientesPage() {
         any = true;
       }
     }
-    return { id: c.id, name: c.name, aum: any ? aum : null, nCustodios: c.accounts.length };
+    return { id: c.id, name: c.name, aum: any ? aum : null, nCustodios: c.accounts.length, householdLabel: c.householdLabel };
   });
 
   const logoUrl = await getAdvisorLogoUrl(supabase, user.id);
