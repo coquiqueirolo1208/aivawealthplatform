@@ -26,6 +26,7 @@ export interface Database {
           pareja: string | null;
           hijos: string | null;
           household_label: string | null;
+          benchmark_msci_pct: number | null;
           is_demo: boolean;
           created_at: string;
         };
@@ -40,6 +41,7 @@ export interface Database {
           pareja?: string | null;
           hijos?: string | null;
           household_label?: string | null;
+          benchmark_msci_pct?: number | null;
           is_demo?: boolean;
           created_at?: string;
         };

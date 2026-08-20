@@ -369,7 +369,13 @@ export default async function ConsolidadoPage({ params }: { params: Promise<{ cl
             </div>
           )}
 
-          <BenchmarkCard portfolioMTD={mtdBlend} portfolioYTD={ytdBlend} benchmarkLevels={benchmarkLevels} />
+          <BenchmarkCard
+            clientId={clientId}
+            portfolioMTD={mtdBlend}
+            portfolioYTD={ytdBlend}
+            benchmarkLevels={benchmarkLevels}
+            msciWeightPct={client.benchmarkMsciPct}
+          />
         </>
       )}
 

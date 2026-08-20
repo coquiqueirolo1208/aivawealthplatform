@@ -1,6 +1,9 @@
 // Ported verbatim from dashboard_patrimonial_13.html computeBenchmarkReturns (line 4302).
 import { prevMonthKey } from "./core";
 
+/** Default MSCI World weight when a client hasn't set their own (the rest goes to Bloomberg Global Agg). */
+export const DEFAULT_MSCI_WEIGHT_PCT = 70;
+
 export interface BenchmarkLevel {
   msci: number | null;
   agg: number | null;
@@ -12,12 +15,16 @@ export interface BenchmarkReturns {
   msciYTD: number | null;
   aggMTD: number | null;
   aggYTD: number | null;
-  /** 70% MSCI World / 30% Bloomberg Global Aggregate, simple weighted average of the two returns. */
+  /** Weighted average of the two returns, using this client's own MSCI/Agg split. */
   blendMTD: number | null;
   blendYTD: number | null;
 }
 
-export function computeBenchmarkReturns(benchmarkLevels: Record<string, BenchmarkLevel>): BenchmarkReturns | null {
+/** `msciWeightPct`: 0-100, share allocated to MSCI World — the rest goes to Bloomberg Global Agg. */
+export function computeBenchmarkReturns(
+  benchmarkLevels: Record<string, BenchmarkLevel>,
+  msciWeightPct: number = DEFAULT_MSCI_WEIGHT_PCT,
+): BenchmarkReturns | null {
   const months = Object.keys(benchmarkLevels).sort();
   if (!months.length) return null;
   const latest = months[months.length - 1];
@@ -36,13 +43,15 @@ export function computeBenchmarkReturns(benchmarkLevels: Record<string, Benchmar
 
   const msci = ret("msci");
   const agg = ret("agg");
+  const msciWeight = msciWeightPct / 100;
+  const aggWeight = 1 - msciWeight;
   return {
     latestMonth: latest,
     msciMTD: msci.mtd,
     msciYTD: msci.ytd,
     aggMTD: agg.mtd,
     aggYTD: agg.ytd,
-    blendMTD: msci.mtd != null && agg.mtd != null ? 0.7 * msci.mtd + 0.3 * agg.mtd : null,
-    blendYTD: msci.ytd != null && agg.ytd != null ? 0.7 * msci.ytd + 0.3 * agg.ytd : null,
+    blendMTD: msci.mtd != null && agg.mtd != null ? msciWeight * msci.mtd + aggWeight * agg.mtd : null,
+    blendYTD: msci.ytd != null && agg.ytd != null ? msciWeight * msci.ytd + aggWeight * agg.ytd : null,
   };
 }

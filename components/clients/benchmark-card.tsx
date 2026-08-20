@@ -1,32 +1,91 @@
 "use client";
 
 import { useState } from "react";
-import { computeBenchmarkReturns, type BenchmarkLevel } from "@/lib/finance/benchmark";
+import { computeBenchmarkReturns, DEFAULT_MSCI_WEIGHT_PCT, type BenchmarkLevel } from "@/lib/finance/benchmark";
 import { fmtPct, pctClass } from "@/lib/format";
 import { saveBenchmarkLevel, deleteBenchmarkLevel } from "@/lib/actions/benchmark";
+import { updateClientBenchmarkWeight } from "@/lib/actions/clients";
 
 export function BenchmarkCard({
+  clientId,
   portfolioMTD,
   portfolioYTD,
   benchmarkLevels,
+  msciWeightPct,
 }: {
+  clientId: string;
   portfolioMTD: number | null;
   portfolioYTD: number | null;
   benchmarkLevels: Record<string, BenchmarkLevel>;
+  msciWeightPct: number | null;
 }) {
   const [showForm, setShowForm] = useState(false);
-  const bench = computeBenchmarkReturns(benchmarkLevels);
+  const [editingWeight, setEditingWeight] = useState(false);
+  const [msciInput, setMsciInput] = useState(String(msciWeightPct ?? DEFAULT_MSCI_WEIGHT_PCT));
+
+  const effectiveMsciPct = msciWeightPct ?? DEFAULT_MSCI_WEIGHT_PCT;
+  const bench = computeBenchmarkReturns(benchmarkLevels, effectiveMsciPct);
   const months = Object.keys(benchmarkLevels).sort();
+
+  const msciPreview = Math.min(100, Math.max(0, Math.round(Number(msciInput) || 0)));
+  const aggPreview = 100 - msciPreview;
 
   return (
     <div className="mt-4 rounded-[10px] border border-(--line) bg-(--panel) p-5">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="font-heading text-base font-semibold text-(--paper)">
-          Benchmark <span className="text-[11px] font-normal text-(--muted)">70% MSCI World / 30% Bloomberg Global Agg</span>
+          Benchmark{" "}
+          <span className="text-[11px] font-normal text-(--muted)">
+            {effectiveMsciPct}% MSCI World / {100 - effectiveMsciPct}% Bloomberg Global Agg
+          </span>
         </h3>
-        <button type="button" className="secondary px-2.5 py-1 text-[11px]" onClick={() => setShowForm((s) => !s)}>
-          {showForm ? "Cerrar" : "Cargar niveles"}
-        </button>
+        <div className="flex gap-1.5">
+          {editingWeight ? (
+            <form
+              action={async (fd) => {
+                await updateClientBenchmarkWeight(clientId, fd);
+                setEditingWeight(false);
+              }}
+              className="flex items-center gap-1.5"
+            >
+              <label className="flex items-center gap-1 text-[11px] text-(--muted)">
+                MSCI
+                <input
+                  type="number"
+                  name="msciPct"
+                  min={0}
+                  max={100}
+                  value={msciInput}
+                  onChange={(e) => setMsciInput(e.target.value)}
+                  className="w-16 text-[12px]"
+                  autoFocus
+                />
+                %
+              </label>
+              <span className="text-[11px] text-(--muted)">Agg {aggPreview}%</span>
+              <button type="submit" className="px-2 py-1 text-[11px]">
+                Guardar
+              </button>
+              <button type="button" className="secondary px-2 py-1 text-[11px]" onClick={() => setEditingWeight(false)}>
+                ✕
+              </button>
+            </form>
+          ) : (
+            <button
+              type="button"
+              className="secondary px-2.5 py-1 text-[11px]"
+              onClick={() => {
+                setMsciInput(String(effectiveMsciPct));
+                setEditingWeight(true);
+              }}
+            >
+              Ajustar mezcla
+            </button>
+          )}
+          <button type="button" className="secondary px-2.5 py-1 text-[11px]" onClick={() => setShowForm((s) => !s)}>
+            {showForm ? "Cerrar" : "Cargar niveles"}
+          </button>
+        </div>
       </div>
 
       {!bench ? (
@@ -54,7 +113,9 @@ export function BenchmarkCard({
               </td>
             </tr>
             <tr className="border-t border-(--line)">
-              <td className="py-2 text-(--paper)">Benchmark 70/30</td>
+              <td className="py-2 text-(--paper)">
+                Benchmark {effectiveMsciPct}/{100 - effectiveMsciPct}
+              </td>
               <td className="text-right font-mono text-(--paper-dim)">{fmtPct(bench.blendMTD)}</td>
               <td className="text-right font-mono text-(--paper-dim)">{fmtPct(bench.blendYTD)}</td>
             </tr>

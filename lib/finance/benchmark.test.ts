@@ -19,6 +19,22 @@ describe("computeBenchmarkReturns", () => {
     expect(r?.blendYTD).toBeCloseTo(0.7 * 10 + 0.3 * 1);
   });
 
+  it("uses a custom MSCI weight when provided", () => {
+    const levels = {
+      "2025-12": { msci: 100, agg: 100 },
+      "2026-06": { msci: 110, agg: 101 },
+    };
+    const r40 = computeBenchmarkReturns(levels, 40);
+    // YTD: msci=10, agg=1 -> 0.4*10 + 0.6*1 = 4.6
+    expect(r40?.blendYTD).toBeCloseTo(4.6);
+
+    const r100 = computeBenchmarkReturns(levels, 100);
+    expect(r100?.blendYTD).toBeCloseTo(10); // all MSCI, agg weight is 0
+
+    const r0 = computeBenchmarkReturns(levels, 0);
+    expect(r0?.blendYTD).toBeCloseTo(1); // all Agg, msci weight is 0
+  });
+
   it("is null when a needed level is missing", () => {
     const r = computeBenchmarkReturns({ "2026-06": { msci: 110, agg: null } });
     expect(r?.msciMTD).toBeNull(); // no prior month
