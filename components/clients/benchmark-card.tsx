@@ -3,32 +3,31 @@
 import { useState } from "react";
 import { computeBenchmarkReturns, DEFAULT_MSCI_WEIGHT_PCT, type BenchmarkLevel } from "@/lib/finance/benchmark";
 import { fmtPct, pctClass } from "@/lib/format";
-import { saveBenchmarkLevel, deleteBenchmarkLevel } from "@/lib/actions/benchmark";
-import { updateClientBenchmarkWeight } from "@/lib/actions/clients";
+import { saveBenchmarkLevel, deleteBenchmarkLevel, saveClientBenchmarkWeight, deleteClientBenchmarkWeight } from "@/lib/actions/benchmark";
 
 export function BenchmarkCard({
   clientId,
   portfolioMTD,
   portfolioYTD,
   benchmarkLevels,
-  msciWeightPct,
+  weightsByMonth,
 }: {
   clientId: string;
   portfolioMTD: number | null;
   portfolioYTD: number | null;
   benchmarkLevels: Record<string, BenchmarkLevel>;
-  msciWeightPct: number | null;
+  weightsByMonth: Record<string, number>;
 }) {
-  const [showForm, setShowForm] = useState(false);
-  const [editingWeight, setEditingWeight] = useState(false);
-  const [msciInput, setMsciInput] = useState(String(msciWeightPct ?? DEFAULT_MSCI_WEIGHT_PCT));
+  const [showLevels, setShowLevels] = useState(false);
+  const [showWeights, setShowWeights] = useState(false);
+  const [msciInput, setMsciInput] = useState("");
 
-  const effectiveMsciPct = msciWeightPct ?? DEFAULT_MSCI_WEIGHT_PCT;
-  const bench = computeBenchmarkReturns(benchmarkLevels, effectiveMsciPct);
-  const months = Object.keys(benchmarkLevels).sort();
+  const bench = computeBenchmarkReturns(benchmarkLevels, weightsByMonth);
+  const levelMonths = Object.keys(benchmarkLevels).sort();
+  const weightMonths = Object.keys(weightsByMonth).sort();
+  const latestWeightPct = weightMonths.length ? weightsByMonth[weightMonths[weightMonths.length - 1]] : DEFAULT_MSCI_WEIGHT_PCT;
 
-  const msciPreview = Math.min(100, Math.max(0, Math.round(Number(msciInput) || 0)));
-  const aggPreview = 100 - msciPreview;
+  const msciPreview = msciInput === "" ? null : Math.min(100, Math.max(0, Math.round(Number(msciInput) || 0)));
 
   return (
     <div className="mt-4 rounded-[10px] border border-(--line) bg-(--panel) p-5">
@@ -36,54 +35,16 @@ export function BenchmarkCard({
         <h3 className="font-heading text-base font-semibold text-(--paper)">
           Benchmark{" "}
           <span className="text-[11px] font-normal text-(--muted)">
-            {effectiveMsciPct}% MSCI World / {100 - effectiveMsciPct}% Bloomberg Global Agg
+            {latestWeightPct}% MSCI World / {100 - latestWeightPct}% Bloomberg Global Agg
+            {weightMonths.length > 0 && ` (vigente desde ${weightMonths[weightMonths.length - 1]})`}
           </span>
         </h3>
         <div className="flex gap-1.5">
-          {editingWeight ? (
-            <form
-              action={async (fd) => {
-                await updateClientBenchmarkWeight(clientId, fd);
-                setEditingWeight(false);
-              }}
-              className="flex items-center gap-1.5"
-            >
-              <label className="flex items-center gap-1 text-[11px] text-(--muted)">
-                MSCI
-                <input
-                  type="number"
-                  name="msciPct"
-                  min={0}
-                  max={100}
-                  value={msciInput}
-                  onChange={(e) => setMsciInput(e.target.value)}
-                  className="w-16 text-[12px]"
-                  autoFocus
-                />
-                %
-              </label>
-              <span className="text-[11px] text-(--muted)">Agg {aggPreview}%</span>
-              <button type="submit" className="px-2 py-1 text-[11px]">
-                Guardar
-              </button>
-              <button type="button" className="secondary px-2 py-1 text-[11px]" onClick={() => setEditingWeight(false)}>
-                ✕
-              </button>
-            </form>
-          ) : (
-            <button
-              type="button"
-              className="secondary px-2.5 py-1 text-[11px]"
-              onClick={() => {
-                setMsciInput(String(effectiveMsciPct));
-                setEditingWeight(true);
-              }}
-            >
-              Ajustar mezcla
-            </button>
-          )}
-          <button type="button" className="secondary px-2.5 py-1 text-[11px]" onClick={() => setShowForm((s) => !s)}>
-            {showForm ? "Cerrar" : "Cargar niveles"}
+          <button type="button" className="secondary px-2.5 py-1 text-[11px]" onClick={() => setShowWeights((s) => !s)}>
+            {showWeights ? "Cerrar" : "Ajustar mezcla"}
+          </button>
+          <button type="button" className="secondary px-2.5 py-1 text-[11px]" onClick={() => setShowLevels((s) => !s)}>
+            {showLevels ? "Cerrar" : "Cargar niveles"}
           </button>
         </div>
       </div>
@@ -113,9 +74,7 @@ export function BenchmarkCard({
               </td>
             </tr>
             <tr className="border-t border-(--line)">
-              <td className="py-2 text-(--paper)">
-                Benchmark {effectiveMsciPct}/{100 - effectiveMsciPct}
-              </td>
+              <td className="py-2 text-(--paper)">Benchmark</td>
               <td className="text-right font-mono text-(--paper-dim)">{fmtPct(bench.blendMTD)}</td>
               <td className="text-right font-mono text-(--paper-dim)">{fmtPct(bench.blendYTD)}</td>
             </tr>
@@ -132,10 +91,69 @@ export function BenchmarkCard({
         </table>
       )}
 
-      {showForm && (
+      {showWeights && (
+        <div className="mt-4 border-t border-(--line) pt-3.5">
+          <p className="mb-2 text-[11px] text-(--muted)">
+            El % de MSCI World que cargues rige desde ese mes en adelante (hasta el próximo cambio) — el YTD combina
+            el mix vigente en cada mes en vez de aplicar el actual a todo el año.
+          </p>
+          {weightMonths.length > 0 && (
+            <div className="mb-2 flex flex-wrap gap-1.5">
+              {weightMonths.map((m) => (
+                <span
+                  key={m}
+                  className="flex items-center gap-1.5 rounded-full px-2.5 py-1 font-mono text-[11px]"
+                  style={{ background: "var(--panel-2)", border: "1px solid var(--line)", color: "var(--paper-dim)" }}
+                >
+                  {m}: {weightsByMonth[m]}% MSCI / {100 - weightsByMonth[m]}% Agg
+                  <button
+                    type="button"
+                    className="bg-transparent p-0 text-(--brick)"
+                    onClick={() => deleteClientBenchmarkWeight(clientId, m)}
+                  >
+                    ✕
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+          <form
+            action={async (fd) => {
+              await saveClientBenchmarkWeight(clientId, fd);
+              setMsciInput("");
+            }}
+            className="flex flex-wrap items-end gap-2"
+          >
+            <label className="block">
+              <span className="mb-1 block text-[11px] text-(--muted)">Vigente desde</span>
+              <input type="month" name="month" required />
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-[11px] text-(--muted)">% MSCI World</span>
+              <input
+                type="number"
+                name="msciPct"
+                min={0}
+                max={100}
+                value={msciInput}
+                onChange={(e) => setMsciInput(e.target.value)}
+                required
+                className="w-20"
+              />
+            </label>
+            <div className="pb-2 text-[11px] text-(--muted)">
+              % Bloomberg Agg:{" "}
+              <span className="font-mono text-(--paper)">{msciPreview == null ? "—" : `${100 - msciPreview}%`}</span>
+            </div>
+            <button type="submit">Guardar</button>
+          </form>
+        </div>
+      )}
+
+      {showLevels && (
         <div className="mt-4 border-t border-(--line) pt-3.5">
           <div className="mb-2 flex flex-wrap gap-1.5">
-            {months.map((m) => (
+            {levelMonths.map((m) => (
               <span
                 key={m}
                 className="flex items-center gap-1.5 rounded-full px-2.5 py-1 font-mono text-[11px]"

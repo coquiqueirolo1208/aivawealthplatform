@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { computeBenchmarkReturns } from "./benchmark";
 
 describe("computeBenchmarkReturns", () => {
-  it("blends 70% MSCI World / 30% Bloomberg Global Agg", () => {
+  it("blends using the default 70/30 when no weight is set for any month", () => {
     const r = computeBenchmarkReturns({
       "2025-12": { msci: 100, agg: 100 },
       "2026-05": { msci: 108, agg: 102 },
@@ -13,32 +13,56 @@ describe("computeBenchmarkReturns", () => {
     expect(r?.msciMTD).toBeCloseTo(1.85185, 4);
     expect(r?.aggMTD).toBeCloseTo(-0.98039, 4);
     expect(r?.blendMTD).toBeCloseTo(0.7 * 1.85185 + 0.3 * -0.98039, 4);
-    // YTD: msci (110-100)/100*100=10, agg (101-100)/100*100=1
     expect(r?.msciYTD).toBeCloseTo(10);
     expect(r?.aggYTD).toBeCloseTo(1);
-    expect(r?.blendYTD).toBeCloseTo(0.7 * 10 + 0.3 * 1);
+    // YTD chains Dec->May then May->June (both blended 70/30) rather than blending the
+    // two endpoint returns directly, so it's close to but not exactly 0.7*10 + 0.3*1.
+    const decToMay = 0.7 * 8 + 0.3 * 2; // msci +8%, agg +2%
+    const mayToJune = 0.7 * 1.85185 + 0.3 * -0.98039;
+    const expectedYtd = ((1 + decToMay / 100) * (1 + mayToJune / 100) - 1) * 100;
+    expect(r?.blendYTD).toBeCloseTo(expectedYtd, 4);
   });
 
-  it("uses a custom MSCI weight when provided", () => {
+  it("applies each month's own weight when the mix changes mid-year", () => {
     const levels = {
       "2025-12": { msci: 100, agg: 100 },
-      "2026-06": { msci: 110, agg: 101 },
+      "2026-03": { msci: 110, agg: 100 }, // msci +10%, agg flat, weighted 70/30 up to here
+      "2026-06": { msci: 110, agg: 110 }, // msci flat, agg +10%, weighted 40/60 from March on
     };
-    const r40 = computeBenchmarkReturns(levels, 40);
-    // YTD: msci=10, agg=1 -> 0.4*10 + 0.6*1 = 4.6
-    expect(r40?.blendYTD).toBeCloseTo(4.6);
+    const weights = { "2026-03": 70, "2026-04": 40 };
+    const r = computeBenchmarkReturns(levels, weights);
+    const decToMar = 0.7 * 10 + 0.3 * 0; // weight for March = 70
+    const marToJun = 0.4 * 0 + 0.6 * 10; // weight for June = 40 (set from April on)
+    const expectedYtd = ((1 + decToMar / 100) * (1 + marToJun / 100) - 1) * 100;
+    expect(r?.blendYTD).toBeCloseTo(expectedYtd, 4);
+    // Applying today's (40) weight to the whole year would give a different, wrong number.
+    expect(r?.blendYTD).not.toBeCloseTo(0.4 * 10 + 0.6 * 10, 4);
+  });
 
-    const r100 = computeBenchmarkReturns(levels, 100);
-    expect(r100?.blendYTD).toBeCloseTo(10); // all MSCI, agg weight is 0
+  it("MTD uses the weight in effect for the latest month specifically", () => {
+    const levels = {
+      "2025-12": { msci: 100, agg: 100 },
+      "2026-05": { msci: 100, agg: 100 },
+      "2026-06": { msci: 110, agg: 100 }, // msci +10% this month, agg flat
+    };
+    const r = computeBenchmarkReturns(levels, { "2026-06": 20 });
+    expect(r?.blendMTD).toBeCloseTo(0.2 * 10 + 0.8 * 0, 4);
+  });
 
-    const r0 = computeBenchmarkReturns(levels, 0);
-    expect(r0?.blendYTD).toBeCloseTo(1); // all Agg, msci weight is 0
+  it("tolerates gaps between recorded months (chains through whatever exists)", () => {
+    const r = computeBenchmarkReturns({
+      "2025-12": { msci: 100, agg: 100 },
+      "2026-06": { msci: 110, agg: 101 },
+    });
+    expect(r?.blendYTD).not.toBeNull();
+    expect(r?.blendYTD).toBeCloseTo(0.7 * 10 + 0.3 * 1, 4); // single step == old endpoint-blend result
   });
 
   it("is null when a needed level is missing", () => {
     const r = computeBenchmarkReturns({ "2026-06": { msci: 110, agg: null } });
     expect(r?.msciMTD).toBeNull(); // no prior month
     expect(r?.aggYTD).toBeNull(); // agg missing entirely
+    expect(r?.blendYTD).toBeNull(); // no December baseline to chain from
   });
 
   it("returns null overall with no data", () => {

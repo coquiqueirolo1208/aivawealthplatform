@@ -26,7 +26,6 @@ export interface Database {
           pareja: string | null;
           hijos: string | null;
           household_label: string | null;
-          benchmark_msci_pct: number | null;
           is_demo: boolean;
           created_at: string;
         };
@@ -41,7 +40,6 @@ export interface Database {
           pareja?: string | null;
           hijos?: string | null;
           household_label?: string | null;
-          benchmark_msci_pct?: number | null;
           is_demo?: boolean;
           created_at?: string;
         };
@@ -52,6 +50,12 @@ export interface Database {
         Row: { id: string; client_id: string; texto: string; created_at: string };
         Insert: { id?: string; client_id: string; texto: string; created_at?: string };
         Update: Partial<Database["public"]["Tables"]["client_notes"]["Insert"]>;
+        Relationships: [];
+      };
+      client_benchmark_weights: {
+        Row: { client_id: string; month: string; msci_pct: number };
+        Insert: { client_id: string; month: string; msci_pct: number };
+        Update: Partial<Database["public"]["Tables"]["client_benchmark_weights"]["Insert"]>;
         Relationships: [];
       };
       client_documents: {

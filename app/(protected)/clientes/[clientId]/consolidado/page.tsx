@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getAdvisorClientsWithSnapshots, type AccountWithSnapshots } from "@/lib/queries/portfolio";
 import { getFunds, getModelPortfolio } from "@/lib/queries/reference";
-import { getBenchmarkLevels } from "@/lib/queries/benchmark";
+import { getBenchmarkLevels, getClientBenchmarkWeights } from "@/lib/queries/benchmark";
 import { getAdvisorLogoUrl } from "@/lib/queries/advisor";
 import {
   accountTrailing12m,
@@ -116,6 +116,7 @@ export default async function ConsolidadoPage({ params }: { params: Promise<{ cl
   );
 
   const benchmarkLevels = await getBenchmarkLevels(supabase);
+  const benchmarkWeights = await getClientBenchmarkWeights(supabase, clientId);
 
   const { data: documents } = await supabase
     .from("client_documents")
@@ -374,7 +375,7 @@ export default async function ConsolidadoPage({ params }: { params: Promise<{ cl
             portfolioMTD={mtdBlend}
             portfolioYTD={ytdBlend}
             benchmarkLevels={benchmarkLevels}
-            msciWeightPct={client.benchmarkMsciPct}
+            weightsByMonth={benchmarkWeights}
           />
         </>
       )}

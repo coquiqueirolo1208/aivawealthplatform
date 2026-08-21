@@ -57,14 +57,3 @@ export async function updateClientHousehold(clientId: string, householdLabel: st
   revalidatePath(`/clientes/${clientId}/consolidado`);
   revalidatePath("/clientes");
 }
-
-/** Only the MSCI World share is ever entered — Bloomberg Global Agg is always 100 minus that, enforced here too. */
-export async function updateClientBenchmarkWeight(clientId: string, formData: FormData) {
-  const raw = String(formData.get("msciPct") ?? "").trim();
-  const msciPct = raw === "" ? null : Math.min(100, Math.max(0, Math.round(Number(raw))));
-  if (raw !== "" && Number.isNaN(msciPct)) return;
-  const { supabase } = await requireAdvisorId();
-  const { error } = await supabase.from("clients").update({ benchmark_msci_pct: msciPct }).eq("id", clientId);
-  if (error) throw error;
-  revalidatePath(`/clientes/${clientId}/consolidado`);
-}

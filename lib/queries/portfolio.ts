@@ -21,8 +21,6 @@ export interface ClientWithAccounts {
   isDemo: boolean;
   householdLabel: string | null;
   createdAt: string;
-  /** Share (0-100) of this client's benchmark allocated to MSCI World — null means use the platform default. */
-  benchmarkMsciPct: number | null;
   accounts: AccountWithSnapshots[];
 }
 
@@ -39,7 +37,7 @@ export async function getAdvisorClientsWithSnapshots(
 ): Promise<ClientWithAccounts[]> {
   const { data: clients, error: clientsError } = await supabase
     .from("clients")
-    .select("id, name, is_demo, household_label, created_at, benchmark_msci_pct")
+    .select("id, name, is_demo, household_label, created_at")
     .or(`advisor_id.eq.${advisorId},is_demo.eq.true`)
     .order("name");
   if (clientsError) throw clientsError;
@@ -86,7 +84,6 @@ export async function getAdvisorClientsWithSnapshots(
     name: c.name,
     isDemo: c.is_demo,
     householdLabel: c.household_label,
-    benchmarkMsciPct: c.benchmark_msci_pct,
     createdAt: c.created_at,
     accounts: accountsByClient.get(c.id) ?? [],
   }));
