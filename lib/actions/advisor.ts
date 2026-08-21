@@ -31,6 +31,7 @@ export async function uploadAdvisorLogo(formData: FormData) {
   const { error } = await supabase.from("advisors").update({ logo_path: path }).eq("id", user.id);
   if (error) throw error;
   revalidatePath("/oficina");
+  revalidatePath("/configuracion");
 }
 
 export async function removeAdvisorLogo() {
@@ -47,4 +48,17 @@ export async function removeAdvisorLogo() {
   const { error } = await supabase.from("advisors").update({ logo_path: null }).eq("id", user.id);
   if (error) throw error;
   revalidatePath("/oficina");
+  revalidatePath("/configuracion");
+}
+
+export async function updateWeeklyEmailPreference(enabled: boolean) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const { error } = await supabase.from("advisors").update({ weekly_email_enabled: enabled }).eq("id", user.id);
+  if (error) throw error;
+  revalidatePath("/configuracion");
 }

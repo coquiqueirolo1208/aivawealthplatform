@@ -73,6 +73,15 @@ export function SiteHeader({
           {now ?? "—"}
         </div>
         {userEmail && (
+          <Link
+            href="/configuracion"
+            className="mt-2 mr-1.5 inline-block rounded-md border border-(--line) bg-transparent px-4 py-2 text-[13px] font-semibold text-(--paper-dim)"
+            title="Configuración"
+          >
+            ⚙ Configuración
+          </Link>
+        )}
+        {userEmail && (
           <button
             type="button"
             onClick={handleSignOut}

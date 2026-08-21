@@ -19,7 +19,10 @@ export async function GET(req: Request) {
   }
 
   const supabase = createAdminClient();
-  const { data: advisors, error } = await supabase.from("advisors").select("id, name, email");
+  const { data: advisors, error } = await supabase
+    .from("advisors")
+    .select("id, name, email")
+    .eq("weekly_email_enabled", true);
   if (error) throw error;
 
   const today = new Date();

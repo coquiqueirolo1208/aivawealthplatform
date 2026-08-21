@@ -3,8 +3,6 @@ import { createClient } from "@/lib/supabase/server";
 import { getAdvisorClientsWithSnapshots } from "@/lib/queries/portfolio";
 import { latestMonth } from "@/lib/finance";
 import { ClientList, type ClientRow } from "@/components/clients/client-list";
-import { AdvisorLogoCard } from "@/components/office/advisor-logo-card";
-import { getAdvisorLogoUrl } from "@/lib/queries/advisor";
 
 export default async function ClientesPage() {
   const supabase = await createClient();
@@ -28,13 +26,8 @@ export default async function ClientesPage() {
     return { id: c.id, name: c.name, aum: any ? aum : null, nCustodios: c.accounts.length, householdLabel: c.householdLabel };
   });
 
-  const logoUrl = await getAdvisorLogoUrl(supabase, user.id);
-
   return (
     <div>
-      <div className="mb-4">
-        <AdvisorLogoCard logoUrl={logoUrl} />
-      </div>
       <ClientList clients={rows} />
     </div>
   );

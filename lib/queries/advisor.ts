@@ -8,3 +8,8 @@ export async function getAdvisorLogoUrl(supabase: SupabaseClient<Database>, advi
   const { data: signed } = await supabase.storage.from("advisor-logos").createSignedUrl(advisor.logo_path, 3600);
   return signed?.signedUrl ?? null;
 }
+
+export async function getAdvisorWeeklyEmailEnabled(supabase: SupabaseClient<Database>, advisorId: string): Promise<boolean> {
+  const { data } = await supabase.from("advisors").select("weekly_email_enabled").eq("id", advisorId).maybeSingle();
+  return data?.weekly_email_enabled ?? true;
+}
