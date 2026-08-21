@@ -22,7 +22,7 @@ export function AccountComplianceCard({
       <p className="mb-3 text-[11px] text-(--muted)">
         Usado para las alertas de riesgo de US state tax y de Transfer on Death pendiente en el Radar.
       </p>
-      <form action={(fd) => updateAccountCompliance(clientId, accountId, fd)} className="grid grid-cols-2 gap-3">
+      <form action={(fd) => updateAccountCompliance(clientId, accountId, fd)} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <label className="block">
           <span className="mb-1 block text-[11px] text-(--muted)">Titularidad de la cuenta</span>
           <select name="titularidad" defaultValue={titularidad ?? ""} className="w-full">
