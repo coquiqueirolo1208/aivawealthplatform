@@ -10,7 +10,7 @@ export function LogoMark({ className }: { className?: string }) {
       <polygon points="30,4 0,56 60,56" fill="currentColor" />
       <rect x="78" y="4" width="18" height="52" fill="currentColor" />
       <polygon points="114,4 174,4 144,56" fill="currentColor" />
-      <polygon points="222,4 192,56 252,56" fill="currentColor" />
+      <polygon points="208,4 178,56 238,56" fill="currentColor" />
     </svg>
   );
 }
