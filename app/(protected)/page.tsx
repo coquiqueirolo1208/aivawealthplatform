@@ -72,12 +72,12 @@ export default async function HomePage() {
         </div>
       )}
 
-      <div className="flex flex-wrap justify-center gap-4.5">
+      <div className="mx-auto flex max-w-[1080px] flex-wrap justify-center gap-4.5">
         {CARDS.map((c) => (
           <Link
             key={c.href}
             href={c.href}
-            className="w-[250px] rounded-[10px] border p-4.5 text-left"
+            className="w-full rounded-[10px] border p-4.5 text-left sm:w-[250px]"
             style={{ background: "var(--brass)", borderColor: "var(--brass)" }}
           >
             <h3 className="mt-0 font-heading text-base font-semibold text-(--ink)">{c.title}</h3>
