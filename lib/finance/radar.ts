@@ -21,6 +21,12 @@ export interface RadarClientInput {
   tasks: Array<{ title: string; due: string | null; done: boolean }>;
 }
 
+export interface RadarProspectInput {
+  id: string;
+  name: string;
+  tasks: Array<{ title: string; due: string | null; done: boolean }>;
+}
+
 export interface RadarData {
   concentraciones: Array<{ clientId: string; clientName: string; activo: string; pct: number; valor: number }>;
   atrasos: Array<{
@@ -33,7 +39,7 @@ export interface RadarData {
     mesesAtraso?: number;
   }>;
   riesgo: Array<{ clientId: string; clientName: string; perfil: string; rvActual: number; rvTarget: number; dev: number }>;
-  tareas: Array<{ clientId: string; clientName: string; title: string; due: string }>;
+  tareas: Array<{ clientId: string | null; clientName: string | null; prospectId: string | null; prospectName: string | null; title: string; due: string }>;
   documentos: Array<{ clientId: string; clientName: string; tipo: string; estado: string; vencimiento: string | null }>;
   usSitusRiesgo: Array<{ clientId: string; clientName: string; total: number }>;
   todPendiente: Array<{ clientId: string; clientName: string; accountId: string; account: string }>;
@@ -45,6 +51,7 @@ export function buildRadarData(
   clients: RadarClientInput[],
   modelPortfolios: Map<string, ModelPortfolio | null>,
   todayIso: string,
+  prospects: RadarProspectInput[] = [],
 ): RadarData {
   const all: RadarData = {
     concentraciones: [],
@@ -126,7 +133,14 @@ export function buildRadarData(
     client.tasks
       .filter((t) => !t.done && t.due && t.due < todayIso)
       .forEach((task) => {
-        all.tareas.push({ clientId: client.id, clientName: client.name, title: task.title, due: task.due! });
+        all.tareas.push({
+          clientId: client.id,
+          clientName: client.name,
+          prospectId: null,
+          prospectName: null,
+          title: task.title,
+          due: task.due!,
+        });
       });
 
     const { total: usSitusTotal, overThreshold } = computeUsSitusExposure(
@@ -147,6 +161,21 @@ export function buildRadarData(
         all.fondeoPendiente.push({ clientId: client.id, clientName: client.name, accountId: a.id, account: a.label, monto: a.montoPendienteTransferir });
       }
     });
+  }
+
+  for (const prospect of prospects) {
+    prospect.tasks
+      .filter((t) => !t.done && t.due && t.due < todayIso)
+      .forEach((task) => {
+        all.tareas.push({
+          clientId: null,
+          clientName: null,
+          prospectId: prospect.id,
+          prospectName: prospect.name,
+          title: task.title,
+          due: task.due!,
+        });
+      });
   }
 
   all.contactoPendiente = computeStaleContacts(

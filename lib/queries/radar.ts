@@ -2,12 +2,15 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/database.types";
 import { getAdvisorClientsWithSnapshots } from "./portfolio";
 import { getModelPortfolio } from "./reference";
-import { buildRadarData, type RadarClientInput, type RadarData } from "@/lib/finance/radar";
+import { buildRadarData, type RadarClientInput, type RadarData, type RadarProspectInput } from "@/lib/finance/radar";
 import { toUsdSnapshotsByMonth } from "@/lib/finance/currency";
 
 export async function loadRadarData(supabase: SupabaseClient<Database>, advisorId: string): Promise<RadarData> {
-  const clients = await getAdvisorClientsWithSnapshots(supabase, advisorId);
-  if (!clients.length) {
+  const [clients, { data: prospects }] = await Promise.all([
+    getAdvisorClientsWithSnapshots(supabase, advisorId),
+    supabase.from("prospects").select("id, name").eq("advisor_id", advisorId),
+  ]);
+  if (!clients.length && !prospects?.length) {
     return {
       concentraciones: [],
       atrasos: [],
@@ -22,12 +25,14 @@ export async function loadRadarData(supabase: SupabaseClient<Database>, advisorI
   }
   const clientIds = clients.map((c) => c.id);
 
-  const [{ data: documents }, { data: riskProfiles }, { data: tasks }, { data: notes }] = await Promise.all([
-    supabase.from("client_documents").select("client_id, tipo, estado, vencimiento").in("client_id", clientIds),
-    supabase.from("risk_profiles").select("client_id, profile").in("client_id", clientIds),
-    supabase.from("tasks").select("client_id, title, due, done").in("client_id", clientIds),
-    supabase.from("client_notes").select("client_id, created_at").in("client_id", clientIds),
-  ]);
+  const [{ data: documents }, { data: riskProfiles }, { data: tasks }, { data: notes }] = clientIds.length
+    ? await Promise.all([
+        supabase.from("client_documents").select("client_id, tipo, estado, vencimiento").in("client_id", clientIds),
+        supabase.from("risk_profiles").select("client_id, profile").in("client_id", clientIds),
+        supabase.from("tasks").select("client_id, title, due, done").in("client_id", clientIds),
+        supabase.from("client_notes").select("client_id, created_at").in("client_id", clientIds),
+      ])
+    : [{ data: [] }, { data: [] }, { data: [] }, { data: [] }];
 
   const docsByClient = new Map<string, Array<{ tipo: string; estado: string; vencimiento: string | null }>>();
   (documents ?? []).forEach((d) => {
@@ -38,6 +43,7 @@ export async function loadRadarData(supabase: SupabaseClient<Database>, advisorI
   (riskProfiles ?? []).forEach((r) => riskByClient.set(r.client_id, r.profile));
   const tasksByClient = new Map<string, Array<{ title: string; due: string | null; done: boolean }>>();
   (tasks ?? []).forEach((t) => {
+    if (!t.client_id) return;
     if (!tasksByClient.has(t.client_id)) tasksByClient.set(t.client_id, []);
     tasksByClient.get(t.client_id)!.push({ title: t.title, due: t.due, done: t.done });
   });
@@ -45,6 +51,17 @@ export async function loadRadarData(supabase: SupabaseClient<Database>, advisorI
   (notes ?? []).forEach((n) => {
     const current = lastNoteByClient.get(n.client_id);
     if (!current || n.created_at > current) lastNoteByClient.set(n.client_id, n.created_at);
+  });
+
+  const prospectIds = (prospects ?? []).map((p) => p.id);
+  const { data: prospectTasks } = prospectIds.length
+    ? await supabase.from("tasks").select("prospect_id, title, due, done").in("prospect_id", prospectIds)
+    : { data: [] };
+  const tasksByProspect = new Map<string, Array<{ title: string; due: string | null; done: boolean }>>();
+  (prospectTasks ?? []).forEach((t) => {
+    if (!t.prospect_id) return;
+    if (!tasksByProspect.has(t.prospect_id)) tasksByProspect.set(t.prospect_id, []);
+    tasksByProspect.get(t.prospect_id)!.push({ title: t.title, due: t.due, done: t.done });
   });
 
   const distinctProfiles = Array.from(new Set(riskByClient.values()));
@@ -68,5 +85,11 @@ export async function loadRadarData(supabase: SupabaseClient<Database>, advisorI
     tasks: tasksByClient.get(c.id) ?? [],
   }));
 
-  return buildRadarData(input, modelPortfolios, new Date().toISOString().slice(0, 10));
+  const prospectInput: RadarProspectInput[] = (prospects ?? []).map((p) => ({
+    id: p.id,
+    name: p.name,
+    tasks: tasksByProspect.get(p.id) ?? [],
+  }));
+
+  return buildRadarData(input, modelPortfolios, new Date().toISOString().slice(0, 10), prospectInput);
 }

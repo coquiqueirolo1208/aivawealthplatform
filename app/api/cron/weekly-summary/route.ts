@@ -43,7 +43,7 @@ export async function GET(req: Request) {
     const pendingTasks = await getPendingTasksForAdvisor(supabase, advisor.id);
     const upcomingTasks = pendingTasks
       .filter((t) => t.due && t.due >= todayIso && t.due <= in7DaysIso)
-      .map((t) => ({ clientName: t.clientName, title: t.title, due: t.due! }));
+      .map((t) => ({ clientName: t.clientName ?? `${t.prospectName} (prospecto)`, title: t.title, due: t.due! }));
 
     const birthdays = await getClientBirthdays(supabase, advisor.id);
     const upcomingBirthdays = computeUpcomingBirthdays(

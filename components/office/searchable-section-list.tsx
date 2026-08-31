@@ -33,7 +33,7 @@ export function SearchableSectionList(props: Props) {
   const empty = <div className="p-6 text-center text-[13px] text-(--muted)">No hay resultados para esa búsqueda.</div>;
 
   if (props.kind === "tareas") {
-    const filtered = props.items.filter((t) => t.clientName.toLowerCase().includes(q));
+    const filtered = props.items.filter((t) => (t.clientName ?? t.prospectName ?? "").toLowerCase().includes(q));
     return (
       <div>
         {searchBox}
@@ -104,7 +104,7 @@ export function SearchableSectionList(props: Props) {
       </div>
     );
   }
-  const filtered = props.items.filter((t) => t.clientName.toLowerCase().includes(q));
+  const filtered = props.items.filter((t) => (t.clientName ?? t.prospectName ?? "").toLowerCase().includes(q));
   return (
     <div>
       {searchBox}

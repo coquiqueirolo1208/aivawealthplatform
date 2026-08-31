@@ -41,7 +41,25 @@ describe("buildRadarData", () => {
   it("flags overdue tasks", () => {
     const client = baseClient({ tasks: [{ title: "Renovar KYC", due: "2026-01-01", done: false }, { title: "Done already", due: "2026-01-01", done: true }] });
     const data = buildRadarData([client], new Map(), "2026-06-01");
-    expect(data.tareas).toEqual([{ clientId: "c1", clientName: "Client One", title: "Renovar KYC", due: "2026-01-01" }]);
+    expect(data.tareas).toEqual([
+      { clientId: "c1", clientName: "Client One", prospectId: null, prospectName: null, title: "Renovar KYC", due: "2026-01-01" },
+    ]);
+  });
+
+  it("flags overdue prospect tasks alongside client tasks", () => {
+    const client = baseClient({ tasks: [{ title: "Renovar KYC", due: "2026-01-01", done: false }] });
+    const data = buildRadarData(
+      [client],
+      new Map(),
+      "2026-06-01",
+      [
+        { id: "p1", name: "Prospect One", tasks: [{ title: "Llamar", due: "2026-02-01", done: false }, { title: "Not due yet", due: "2026-12-01", done: false }, { title: "Done", due: "2026-01-01", done: true }] },
+      ],
+    );
+    expect(data.tareas).toEqual([
+      { clientId: "c1", clientName: "Client One", prospectId: null, prospectName: null, title: "Renovar KYC", due: "2026-01-01" },
+      { clientId: null, clientName: null, prospectId: "p1", prospectName: "Prospect One", title: "Llamar", due: "2026-02-01" },
+    ]);
   });
 
   it("flags non-vigente documents", () => {

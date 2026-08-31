@@ -188,8 +188,8 @@ export interface Database {
         Relationships: [];
       };
       tasks: {
-        Row: { id: string; client_id: string; title: string; due: string | null; done: boolean };
-        Insert: { id?: string; client_id: string; title: string; due?: string | null; done?: boolean };
+        Row: { id: string; client_id: string | null; prospect_id: string | null; title: string; due: string | null; done: boolean };
+        Insert: { id?: string; client_id?: string | null; prospect_id?: string | null; title: string; due?: string | null; done?: boolean };
         Update: Partial<Database["public"]["Tables"]["tasks"]["Insert"]>;
         Relationships: [];
       };

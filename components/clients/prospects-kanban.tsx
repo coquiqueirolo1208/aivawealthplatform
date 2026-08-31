@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { PROSPECT_STAGES, ONBOARDING_FORM_URL } from "@/lib/constants";
 import { fmtUSD } from "@/lib/format";
 import { addProspect, convertProspect, deleteProspect, updateProspect, updateProspectStage } from "@/lib/actions/prospects";
+import { addProspectTask, markTaskDone } from "@/lib/actions/tasks";
 import type { Prospect } from "@/lib/queries/prospects";
 
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
@@ -82,6 +83,7 @@ export function ProspectsKanban({ prospects, nowMs }: { prospects: Prospect[]; n
           prospects={byStage.get(openStage) ?? []}
           onClose={() => setOpenStage(null)}
           onConverted={(clientId) => router.push(`/clientes/${clientId}`)}
+          nowMs={nowMs}
         />
       )}
     </div>
@@ -94,15 +96,19 @@ function ProspectStageModal({
   prospects,
   onClose,
   onConverted,
+  nowMs,
 }: {
   stageId: string;
   stageLabel: string;
   prospects: Prospect[];
   onClose: () => void;
   onConverted: (clientId: string) => void;
+  nowMs: number;
 }) {
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [addingTaskFor, setAddingTaskFor] = useState<string | null>(null);
+  const todayIso = new Date(nowMs).toISOString().slice(0, 10);
 
   return (
     <div
@@ -166,6 +172,56 @@ function ProspectStageModal({
                   </div>
                 )}
                 {p.notas && <div className="mt-1 text-(--muted)">{p.notas}</div>}
+
+                <div className="mt-2 border-t pt-2" style={{ borderColor: "var(--line)" }}>
+                  <div className="mb-1 flex items-center justify-between">
+                    <span className="text-[10.5px] font-semibold tracking-[0.04em] text-(--muted) uppercase">Tareas</span>
+                    <button
+                      type="button"
+                      className="text-[11px] text-(--brass) underline"
+                      onClick={() => setAddingTaskFor(addingTaskFor === p.id ? null : p.id)}
+                    >
+                      {addingTaskFor === p.id ? "cerrar" : "+ agregar"}
+                    </button>
+                  </div>
+                  {p.tasks.filter((t) => !t.done).length === 0 ? (
+                    <div className="text-[11px] text-(--muted)">Sin tareas pendientes.</div>
+                  ) : (
+                    p.tasks
+                      .filter((t) => !t.done)
+                      .map((t) => {
+                        const overdue = !!t.due && t.due < todayIso;
+                        return (
+                          <div key={t.id} className="mb-1 flex items-center justify-between gap-2 text-[11.5px]">
+                            <span style={overdue ? { color: "var(--brick)" } : undefined} className={overdue ? undefined : "text-(--paper-dim)"}>
+                              {t.title}
+                              {t.due && ` (${overdue ? "venció" : "vence"} ${t.due})`}
+                            </span>
+                            <form action={markTaskDone.bind(null, t.id)}>
+                              <button type="submit" className="secondary px-1.5 py-0.5 text-[10px]">
+                                Marcar hecha
+                              </button>
+                            </form>
+                          </div>
+                        );
+                      })
+                  )}
+                  {addingTaskFor === p.id && (
+                    <form
+                      action={async (fd) => {
+                        await addProspectTask(p.id, fd);
+                        setAddingTaskFor(null);
+                      }}
+                      className="mt-1.5 flex flex-wrap gap-1.5"
+                    >
+                      <input type="text" name="title" placeholder="Título *" required autoFocus className="flex-1 text-[11px]" />
+                      <input type="date" name="due" className="text-[11px]" />
+                      <button type="submit" className="px-2 py-1 text-[11px]">
+                        Agregar
+                      </button>
+                    </form>
+                  )}
+                </div>
 
                 <div className="mt-2 flex flex-wrap items-center gap-2">
                   <select

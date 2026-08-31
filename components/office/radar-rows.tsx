@@ -19,7 +19,8 @@ export function TareaRow({ t }: { t: RadarData["tareas"][number] }) {
       style={{ borderColor: "var(--brick)" }}
     >
       <span>
-        <ClientLink clientId={t.clientId} clientName={t.clientName} /> — {t.title}
+        {t.clientId ? <ClientLink clientId={t.clientId} clientName={t.clientName!} /> : <span className="font-semibold">{t.prospectName} (prospecto)</span>} —{" "}
+        {t.title}
       </span>
       <span className="text-[11px]" style={{ color: "var(--brick)" }}>
         venció {t.due}
@@ -66,8 +67,12 @@ export function PendingTaskRow({ t }: { t: PendingTask }) {
       style={{ background: "var(--panel-2)", border: "1px solid var(--line)" }}
     >
       <span>
-        <ClientLink clientId={t.clientId} clientName={t.clientName} /> — {t.title}{" "}
-        {t.due && <span className="font-mono text-(--muted)">(vence {t.due})</span>}
+        {t.clientId ? (
+          <ClientLink clientId={t.clientId} clientName={t.clientName!} />
+        ) : (
+          <span className="font-semibold">{t.prospectName} (prospecto)</span>
+        )}{" "}
+        — {t.title} {t.due && <span className="font-mono text-(--muted)">(vence {t.due})</span>}
       </span>
       <form action={markTaskDone.bind(null, t.id)}>
         <button type="submit" className="secondary px-2.5 py-1 text-[11px]">
