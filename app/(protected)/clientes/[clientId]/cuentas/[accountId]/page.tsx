@@ -61,6 +61,7 @@ export default async function AccountPage({
           titularidad={account.titularidad}
           todCompletado={account.todCompletado}
           todFecha={account.todFecha}
+          montoPendienteTransferir={account.montoPendienteTransferir}
         />
       </div>
 

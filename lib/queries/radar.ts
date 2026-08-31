@@ -17,6 +17,7 @@ export async function loadRadarData(supabase: SupabaseClient<Database>, advisorI
       usSitusRiesgo: [],
       todPendiente: [],
       contactoPendiente: [],
+      fondeoPendiente: [],
     };
   }
   const clientIds = clients.map((c) => c.id);

@@ -69,15 +69,22 @@ export async function deleteSnapshot(clientId: string, accountId: string, month:
   revalidatePath(`/clientes/${clientId}`);
 }
 
-/** Titularidad + TOD are compliance metadata on the account itself, not tied to any one month's snapshot. */
+/** Titularidad + TOD + pending funding are operational metadata on the account itself, not tied to any one month's snapshot. */
 export async function updateAccountCompliance(clientId: string, accountId: string, formData: FormData) {
   const titularidad = String(formData.get("titularidad") ?? "") || null;
   const todCompletado = formData.get("todCompletado") === "on";
   const todFecha = String(formData.get("todFecha") ?? "") || null;
+  const montoRaw = formData.get("montoPendienteTransferir");
+  const montoPendienteTransferir = montoRaw === null || montoRaw === "" ? null : Math.max(0, Number(montoRaw)) || null;
   const supabase = await requireSupabase();
   const { error } = await supabase
     .from("accounts")
-    .update({ titularidad, tod_completado: todCompletado, tod_fecha: todCompletado ? todFecha : null })
+    .update({
+      titularidad,
+      tod_completado: todCompletado,
+      tod_fecha: todCompletado ? todFecha : null,
+      monto_pendiente_transferir: montoPendienteTransferir,
+    })
     .eq("id", accountId);
   if (error) throw error;
   revalidatePath(`/clientes/${clientId}/cuentas/${accountId}`);

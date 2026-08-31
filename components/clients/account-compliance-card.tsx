@@ -9,18 +9,20 @@ export function AccountComplianceCard({
   titularidad,
   todCompletado,
   todFecha,
+  montoPendienteTransferir,
 }: {
   clientId: string;
   accountId: string;
   titularidad: string | null;
   todCompletado: boolean;
   todFecha: string | null;
+  montoPendienteTransferir: number | null;
 }) {
   return (
     <div className="rounded-[10px] border border-(--line) bg-(--panel) p-5">
       <h3 className="mb-1 font-heading text-base font-semibold text-(--paper)">Titularidad y sucesión</h3>
       <p className="mb-3 text-[11px] text-(--muted)">
-        Usado para las alertas de riesgo de US state tax y de Transfer on Death pendiente en el Radar.
+        Usado para las alertas de riesgo de US state tax, TOD pendiente y fondeo pendiente en el Radar.
       </p>
       <form action={(fd) => updateAccountCompliance(clientId, accountId, fd)} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <label className="block">
@@ -41,6 +43,21 @@ export function AccountComplianceCard({
         <label className="block">
           <span className="mb-1 block text-[11px] text-(--muted)">Fecha TOD completado</span>
           <input type="date" name="todFecha" defaultValue={todFecha ?? ""} className="w-full" />
+        </label>
+        <label className="block">
+          <span className="mb-1 flex items-center text-[11px] text-(--muted)">
+            Monto pendiente de transferir (USD)
+            <HelpTooltip text="Cuenta ya aprobada a la espera de que el cliente transfiera los fondos. Dejalo vacío o en 0 apenas se reciban — mientras haya un monto, aparece en el Radar." />
+          </span>
+          <input
+            type="number"
+            step="0.01"
+            min="0"
+            name="montoPendienteTransferir"
+            defaultValue={montoPendienteTransferir ?? ""}
+            placeholder="0"
+            className="w-full"
+          />
         </label>
         <div className="col-span-full">
           <button type="submit" className="px-3.5 py-1.5 text-[12px]">

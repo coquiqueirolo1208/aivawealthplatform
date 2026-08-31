@@ -15,6 +15,7 @@ function acc(overrides: Partial<AccountWithSnapshots> & Pick<AccountWithSnapshot
     titularidad: null,
     todCompletado: false,
     todFecha: null,
+    montoPendienteTransferir: null,
     snapshots: {},
     ...overrides,
   };
@@ -150,6 +151,7 @@ describe("buildRadarData", () => {
       usSitusRiesgo: [],
       todPendiente: [],
       contactoPendiente: [],
+      fondeoPendiente: [],
     });
   });
 
@@ -184,6 +186,22 @@ describe("buildRadarData", () => {
     });
     const data = buildRadarData([client], new Map(), "2026-06-01");
     expect(data.todPendiente).toEqual([{ clientId: "c1", clientName: "Client One", accountId: "a1", account: "Personal sin TOD" }]);
+  });
+
+  it("flags accounts with a pending transfer amount, sorted by amount descending, ignoring zero/null", () => {
+    const client = baseClient({
+      accounts: [
+        acc({ id: "a1", label: "Small pending", montoPendienteTransferir: 10000 }),
+        acc({ id: "a2", label: "Big pending", montoPendienteTransferir: 50000 }),
+        acc({ id: "a3", label: "Cleared", montoPendienteTransferir: 0 }),
+        acc({ id: "a4", label: "Never set", montoPendienteTransferir: null }),
+      ],
+    });
+    const data = buildRadarData([client], new Map(), "2026-06-01");
+    expect(data.fondeoPendiente).toEqual([
+      { clientId: "c1", clientName: "Client One", accountId: "a2", account: "Big pending", monto: 50000 },
+      { clientId: "c1", clientName: "Client One", accountId: "a1", account: "Small pending", monto: 10000 },
+    ]);
   });
 
   it("flags a client with no recent contact, using the last note when there is one", () => {

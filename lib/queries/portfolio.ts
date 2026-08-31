@@ -12,6 +12,7 @@ export interface AccountWithSnapshots {
   titularidad: string | null;
   todCompletado: boolean;
   todFecha: string | null;
+  montoPendienteTransferir: number | null;
   snapshots: SnapshotsByMonth;
 }
 
@@ -46,7 +47,9 @@ export async function getAdvisorClientsWithSnapshots(
   const clientIds = clients.map((c) => c.id);
   const { data: accounts, error: accountsError } = await supabase
     .from("accounts")
-    .select("id, client_id, label, custodian, account_number, comentario, titularidad, tod_completado, tod_fecha")
+    .select(
+      "id, client_id, label, custodian, account_number, comentario, titularidad, tod_completado, tod_fecha, monto_pendiente_transferir",
+    )
     .in("client_id", clientIds);
   if (accountsError) throw accountsError;
 
@@ -75,6 +78,7 @@ export async function getAdvisorClientsWithSnapshots(
       titularidad: a.titularidad,
       todCompletado: a.tod_completado,
       todFecha: a.tod_fecha,
+      montoPendienteTransferir: a.monto_pendiente_transferir,
       snapshots: snapsByAccount.get(a.id) ?? {},
     });
   }

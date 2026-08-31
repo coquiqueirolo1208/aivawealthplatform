@@ -116,6 +116,22 @@ export function ContactoRow({ c }: { c: RadarData["contactoPendiente"][number] }
   );
 }
 
+export function FondeoRow({ f }: { f: RadarData["fondeoPendiente"][number] }) {
+  return (
+    <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2.5 py-1.5 text-[13px]">
+      <span>
+        <ClientLink clientId={f.clientId} clientName={f.clientName} /> —{" "}
+        <Link href={`/clientes/${f.clientId}/cuentas/${f.accountId}`} className="underline">
+          {f.account}
+        </Link>
+      </span>
+      <span className="text-[11px] font-semibold" style={{ color: "var(--brass)" }}>
+        {fmtUSD(f.monto)} pendientes de transferir
+      </span>
+    </div>
+  );
+}
+
 export function RiesgoRow({ r }: { r: RadarData["riesgo"][number] }) {
   return (
     <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2.5 py-1.5 text-[13px]">

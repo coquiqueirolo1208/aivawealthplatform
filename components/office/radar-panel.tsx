@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { RadarData } from "@/lib/finance/radar";
-import { AtrasoRow, ContactoRow, DocumentoRow, RiesgoRow, TareaRow, TodRow, UsSitusRow } from "./radar-rows";
+import { AtrasoRow, ContactoRow, DocumentoRow, FondeoRow, RiesgoRow, TareaRow, TodRow, UsSitusRow } from "./radar-rows";
 
 const MAX_ROWS = 5;
 
@@ -21,7 +21,8 @@ export function RadarPanel({ data }: { data: RadarData }) {
     data.documentos.length +
     data.usSitusRiesgo.length +
     data.todPendiente.length +
-    data.contactoPendiente.length;
+    data.contactoPendiente.length +
+    data.fondeoPendiente.length;
 
   if (total === 0) {
     return (
@@ -114,6 +115,21 @@ export function RadarPanel({ data }: { data: RadarData }) {
             <TodRow key={i} t={t} />
           ))}
           <VerTodos section="tod" count={data.todPendiente.length} />
+        </div>
+      )}
+
+      {data.fondeoPendiente.length > 0 && (
+        <div className="rounded-[10px] border p-5" style={{ borderColor: "var(--brass)", background: "var(--panel)" }}>
+          <h3 className="mb-1 font-heading text-base font-semibold" style={{ color: "var(--brass)" }}>
+            Fondeo pendiente ({data.fondeoPendiente.length})
+          </h3>
+          <div className="mb-2 text-[11px] text-(--muted)">
+            Cuentas ya aprobadas donde el cliente todavía no transfirió los fondos.
+          </div>
+          {data.fondeoPendiente.slice(0, MAX_ROWS).map((f, i) => (
+            <FondeoRow key={i} f={f} />
+          ))}
+          <VerTodos section="fondeo" count={data.fondeoPendiente.length} />
         </div>
       )}
 

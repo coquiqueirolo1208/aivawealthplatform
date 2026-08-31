@@ -38,6 +38,7 @@ export interface RadarData {
   usSitusRiesgo: Array<{ clientId: string; clientName: string; total: number }>;
   todPendiente: Array<{ clientId: string; clientName: string; accountId: string; account: string }>;
   contactoPendiente: Array<{ clientId: string; clientName: string; lastContactAt: string; daysSince: number }>;
+  fondeoPendiente: Array<{ clientId: string; clientName: string; accountId: string; account: string; monto: number }>;
 }
 
 export function buildRadarData(
@@ -54,6 +55,7 @@ export function buildRadarData(
     usSitusRiesgo: [],
     todPendiente: [],
     contactoPendiente: [],
+    fondeoPendiente: [],
   };
   const todayMonth = todayIso.slice(0, 7);
 
@@ -139,6 +141,12 @@ export function buildRadarData(
     ).forEach((a) => {
       all.todPendiente.push({ clientId: client.id, clientName: client.name, accountId: a.accountId, account: a.accountLabel });
     });
+
+    client.accounts.forEach((a) => {
+      if (a.montoPendienteTransferir && a.montoPendienteTransferir > 0) {
+        all.fondeoPendiente.push({ clientId: client.id, clientName: client.name, accountId: a.id, account: a.label, monto: a.montoPendienteTransferir });
+      }
+    });
   }
 
   all.contactoPendiente = computeStaleContacts(
@@ -152,6 +160,7 @@ export function buildRadarData(
   all.tareas.sort((a, b) => a.due.localeCompare(b.due));
   all.documentos.sort((a, b) => (a.vencimiento ?? "0").localeCompare(b.vencimiento ?? "0"));
   all.usSitusRiesgo.sort((a, b) => b.total - a.total);
+  all.fondeoPendiente.sort((a, b) => b.monto - a.monto);
   return all;
 }
 
@@ -164,6 +173,7 @@ export function countRadarAlerts(data: RadarData): number {
     data.riesgo.length +
     data.usSitusRiesgo.length +
     data.todPendiente.length +
-    data.contactoPendiente.length
+    data.contactoPendiente.length +
+    data.fondeoPendiente.length
   );
 }

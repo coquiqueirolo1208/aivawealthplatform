@@ -12,6 +12,7 @@ const SECTION_TITLES = {
   "us-situs": "Riesgo de US state tax — exposición >$60k",
   tod: "Transfer on Death (TOD) pendiente",
   contacto: "Sin contacto reciente",
+  fondeo: "Fondeo pendiente",
 } as const;
 
 type Section = keyof typeof SECTION_TITLES;
@@ -38,7 +39,9 @@ export default async function RadarSectionPage({ params }: { params: Promise<{ s
         ? data.todPendiente
         : section === "contacto"
           ? data.contactoPendiente
-          : data[section];
+          : section === "fondeo"
+            ? data.fondeoPendiente
+            : data[section];
 
   return (
     <div>
@@ -63,6 +66,8 @@ export default async function RadarSectionPage({ params }: { params: Promise<{ s
           <SearchableSectionList kind="usSitus" items={data.usSitusRiesgo} />
         ) : section === "tod" ? (
           <SearchableSectionList kind="tod" items={data.todPendiente} />
+        ) : section === "fondeo" ? (
+          <SearchableSectionList kind="fondeo" items={data.fondeoPendiente} />
         ) : (
           <SearchableSectionList kind="contacto" items={data.contactoPendiente} />
         )}

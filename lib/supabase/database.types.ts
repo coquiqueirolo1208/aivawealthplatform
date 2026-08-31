@@ -122,6 +122,7 @@ export interface Database {
           titularidad: string | null;
           tod_completado: boolean;
           tod_fecha: string | null;
+          monto_pendiente_transferir: number | null;
         };
         Insert: {
           id?: string;
@@ -133,6 +134,7 @@ export interface Database {
           titularidad?: string | null;
           tod_completado?: boolean;
           tod_fecha?: string | null;
+          monto_pendiente_transferir?: number | null;
         };
         Update: Partial<Database["public"]["Tables"]["accounts"]["Insert"]>;
         Relationships: [];
