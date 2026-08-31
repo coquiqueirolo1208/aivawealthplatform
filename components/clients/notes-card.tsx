@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { addNote, deleteNote } from "@/lib/actions/notes";
 import type { ClientNote } from "@/lib/queries/notes";
+import { fmtDateTime } from "@/lib/format";
 
 export function NotesCard({ clientId, notes }: { clientId: string; notes: ClientNote[] }) {
   const [adding, setAdding] = useState(false);
@@ -43,7 +44,7 @@ export function NotesCard({ clientId, notes }: { clientId: string; notes: Client
           >
             <div className="mb-1 flex items-center justify-between">
               <span className="font-mono text-[11px] text-(--muted)">
-                {new Date(n.createdAt).toLocaleString("es-UY", { dateStyle: "medium", timeStyle: "short" })}
+                {fmtDateTime(n.createdAt)}
               </span>
               {confirmingId === n.id ? (
                 <button type="button" className="bg-(--brick) px-2 py-0.5 text-[10px]" onClick={() => deleteNote(clientId, n.id)}>

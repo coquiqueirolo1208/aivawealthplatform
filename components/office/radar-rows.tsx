@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { RadarData } from "@/lib/finance/radar";
 import type { PendingTask } from "@/lib/queries/tasks";
 import { markTaskDone } from "@/lib/actions/tasks";
-import { fmtUSD } from "@/lib/format";
+import { fmtDate, fmtUSD } from "@/lib/format";
 
 export function ClientLink({ clientId, clientName }: { clientId: string; clientName: string }) {
   return (
@@ -23,7 +23,7 @@ export function TareaRow({ t }: { t: RadarData["tareas"][number] }) {
         {t.title}
       </span>
       <span className="text-[11px]" style={{ color: "var(--brick)" }}>
-        venció {t.due}
+        venció {fmtDate(t.due)}
       </span>
     </div>
   );
@@ -38,7 +38,7 @@ export function DocumentoRow({ d }: { d: RadarData["documentos"][number] }) {
       </span>
       <span className="text-[11px] font-bold uppercase" style={{ color }}>
         {d.estado}
-        {d.vencimiento ? ` (${d.vencimiento})` : ""}
+        {d.vencimiento ? ` (${fmtDate(d.vencimiento)})` : ""}
       </span>
     </div>
   );
@@ -72,7 +72,7 @@ export function PendingTaskRow({ t }: { t: PendingTask }) {
         ) : (
           <span className="font-semibold">{t.prospectName} (prospecto)</span>
         )}{" "}
-        — {t.title} {t.due && <span className="font-mono text-(--muted)">(vence {t.due})</span>}
+        — {t.title} {t.due && <span className="font-mono text-(--muted)">(vence {fmtDate(t.due)})</span>}
       </span>
       <form action={markTaskDone.bind(null, t.id)}>
         <button type="submit" className="secondary px-2.5 py-1 text-[11px]">

@@ -7,6 +7,7 @@ import { fmtUSD } from "@/lib/format";
 import { addProspect, convertProspect, deleteProspect, updateProspect, updateProspectStage } from "@/lib/actions/prospects";
 import { addProspectTask, markTaskDone } from "@/lib/actions/tasks";
 import type { Prospect } from "@/lib/queries/prospects";
+import { fmtDate } from "@/lib/format";
 
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -168,7 +169,7 @@ function ProspectStageModal({
                 {p.fuente && <div className="text-(--muted)">Fuente: {p.fuente}</div>}
                 {(p.proximaAccion || p.proximaFecha) && (
                   <div className="text-(--paper-dim)">
-                    Próxima acción: {p.proximaAccion ?? "—"} {p.proximaFecha && `(${p.proximaFecha})`}
+                    Próxima acción: {p.proximaAccion ?? "—"} {p.proximaFecha && `(${fmtDate(p.proximaFecha)})`}
                   </div>
                 )}
                 {p.notas && <div className="mt-1 text-(--muted)">{p.notas}</div>}
@@ -195,7 +196,7 @@ function ProspectStageModal({
                           <div key={t.id} className="mb-1 flex items-center justify-between gap-2 text-[11.5px]">
                             <span style={overdue ? { color: "var(--brick)" } : undefined} className={overdue ? undefined : "text-(--paper-dim)"}>
                               {t.title}
-                              {t.due && ` (${overdue ? "venció" : "vence"} ${t.due})`}
+                              {t.due && ` (${overdue ? "venció" : "vence"} ${fmtDate(t.due)})`}
                             </span>
                             <form action={markTaskDone.bind(null, t.id)}>
                               <button type="submit" className="secondary px-1.5 py-0.5 text-[10px]">

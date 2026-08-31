@@ -1,4 +1,4 @@
-import { fmtPct, fmtUSD } from "@/lib/format";
+import { fmtDate, fmtPct, fmtUSD } from "@/lib/format";
 import { drawTable } from "./draw-table";
 
 const NAVY: [number, number, number] = [19, 31, 56];
@@ -74,7 +74,7 @@ export async function exportConsolidadoToPdf(data: ConsolidadoPdfData) {
     doc.text(subtitle, textX, logo ? 60 : 47);
   }
 
-  pageHeader("AIVA Wealth Platform", `${data.clientName} — Reporte consolidado — ${new Date().toLocaleDateString()}`);
+  pageHeader("AIVA Wealth Platform", `${data.clientName} — Reporte consolidado — ${fmtDate(new Date().toISOString())}`);
   let y = headerH + 32;
 
   doc.setTextColor(40, 40, 40);

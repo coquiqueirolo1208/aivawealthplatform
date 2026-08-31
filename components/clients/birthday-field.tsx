@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { updateClientBirthday } from "@/lib/actions/clients";
+import { fmtDate } from "@/lib/format";
 
 export function BirthdayField({ clientId, fechaNacimiento }: { clientId: string; fechaNacimiento: string | null }) {
   const [editing, setEditing] = useState(false);
@@ -28,7 +29,7 @@ export function BirthdayField({ clientId, fechaNacimiento }: { clientId: string;
 
   return (
     <button type="button" className="secondary px-2.5 py-1 text-[11px]" onClick={() => setEditing(true)}>
-      {fechaNacimiento ? `🎂 ${fechaNacimiento}` : "+ agregar cumpleaños"}
+      {fechaNacimiento ? `🎂 ${fmtDate(fechaNacimiento)}` : "+ agregar cumpleaños"}
     </button>
   );
 }

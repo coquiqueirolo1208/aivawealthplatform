@@ -4,7 +4,7 @@ import { useState } from "react";
 import { investecBuildManagerOverlap, investecPortfolioMetricsFull, matchInvestecFundPerf } from "@/lib/finance";
 import type { FundRow } from "@/lib/finance/types";
 import type { InvestecClassRow, InvestecDataBlob, InvestecSolution } from "@/lib/queries/investec";
-import { fmtPct, pctClass } from "@/lib/format";
+import { fmtDate, fmtPct, pctClass } from "@/lib/format";
 
 type ModalKind = "composicion" | "performance" | "clases" | "yd" | "evolucion" | "overlap" | "top10" | "regional";
 
@@ -30,7 +30,7 @@ export function InvestecSolutions({
       <div className="mb-4 rounded-[10px] border border-(--line) bg-(--panel) p-5">
         <h3 className="mb-1 font-heading text-base font-semibold text-(--paper)">Soluciones Investec — One Stop Solution</h3>
         <p className="mb-3 text-[12.5px] text-(--muted)">
-          Datos al {new Date().toLocaleDateString()} · comparativas cruzadas entre las 5 soluciones.
+          Datos al {fmtDate(new Date().toISOString())} · comparativas cruzadas entre las 5 soluciones.
         </p>
         <div className="flex flex-wrap gap-2">
           <button type="button" className="secondary px-3 py-1.5 text-[12px]" onClick={() => setModal({ kind: "overlap" })}>

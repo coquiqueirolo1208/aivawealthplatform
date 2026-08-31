@@ -8,6 +8,7 @@ import { getClientCookie, setClientCookie } from "@/lib/client-cookies";
 import { createClient } from "@/lib/supabase/client";
 import { t, type Language } from "@/lib/i18n";
 import { IaAdvisorModal } from "@/components/ia-advisor-modal";
+import { fmtDateTime } from "@/lib/format";
 
 export function SiteHeader({
   initialTheme,
@@ -29,7 +30,7 @@ export function SiteHeader({
       // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time hydration from a cookie, not a render loop
       setLang(savedLang);
     }
-    setNow(new Date().toLocaleString());
+    setNow(fmtDateTime(new Date().toISOString()));
   }, []);
 
   function toggleTheme() {

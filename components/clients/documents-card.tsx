@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { addDocument, deleteDocument } from "@/lib/actions/documents";
 import { docStatusInfo } from "@/lib/documents";
+import { fmtDate } from "@/lib/format";
 
 export interface ClientDocument {
   id: string;
@@ -30,7 +31,7 @@ export function DocumentsCard({ clientId, documents }: { clientId: string; docum
             <div key={d.id} className="mb-1.5 flex items-center justify-between rounded-lg px-3.5 py-2.5 text-[12.5px]" style={{ background: "var(--panel-2)", border: "1px solid var(--line)" }}>
               <span className="text-(--paper)">
                 {d.tipo}
-                {d.vencimiento && <span className="ml-1.5 font-mono text-[11px] text-(--muted)">({d.vencimiento})</span>}
+                {d.vencimiento && <span className="ml-1.5 font-mono text-[11px] text-(--muted)">({fmtDate(d.vencimiento)})</span>}
               </span>
               <span className="flex items-center gap-2.5">
                 <span className="text-[11px] font-semibold uppercase" style={{ color }}>

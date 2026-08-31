@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { addTask, markTaskDone } from "@/lib/actions/tasks";
 import type { ClientTask } from "@/lib/queries/tasks";
+import { fmtDate } from "@/lib/format";
 
 export function TasksCard({ clientId, tasks }: { clientId: string; tasks: ClientTask[] }) {
   const [adding, setAdding] = useState(false);
@@ -30,7 +31,7 @@ export function TasksCard({ clientId, tasks }: { clientId: string; tasks: Client
           >
             <span className="text-(--paper)">
               {t.title}
-              {t.due && <span className="ml-1.5 font-mono text-[11px] text-(--muted)">(vence {t.due})</span>}
+              {t.due && <span className="ml-1.5 font-mono text-[11px] text-(--muted)">(vence {fmtDate(t.due)})</span>}
             </span>
             <form action={markTaskDone.bind(null, t.id)}>
               <button type="submit" className="secondary px-2 py-1 text-[11px]">

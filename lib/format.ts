@@ -40,3 +40,29 @@ export function pctColor(n: number | null | undefined): string {
   if (cls === "neg") return "var(--brick)";
   return "var(--paper-dim)";
 }
+
+/**
+ * Formats a date-only or datetime ISO string as dd/mm/yyyy. Pulls the leading
+ * YYYY-MM-DD via regex rather than `new Date(iso)` — a date-only string parses
+ * as UTC midnight, which can shift a day when read back in a behind-UTC local
+ * time zone.
+ */
+export function fmtDate(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
+  if (!m) return iso;
+  const [, y, mo, d] = m;
+  return `${d}/${mo}/${y}`;
+}
+
+/** Formats a full ISO timestamp as dd/mm/yyyy, HH:mm in the viewer's local time zone. */
+export function fmtDateTime(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  const date = new Date(iso);
+  if (isNaN(date.getTime())) return iso;
+  const dd = String(date.getDate()).padStart(2, "0");
+  const mo = String(date.getMonth() + 1).padStart(2, "0");
+  const hh = String(date.getHours()).padStart(2, "0");
+  const mm = String(date.getMinutes()).padStart(2, "0");
+  return `${dd}/${mo}/${date.getFullYear()}, ${hh}:${mm}`;
+}

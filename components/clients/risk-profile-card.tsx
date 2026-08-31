@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { RISK_QUESTIONS, type RiskProfileKey } from "@/lib/constants";
 import { saveRiskProfile } from "@/lib/actions/risk-profile";
+import { fmtDate } from "@/lib/format";
 
 const PROFILE_LABELS: Record<RiskProfileKey, string> = {
   conservador: "Conservador",
@@ -33,7 +34,7 @@ export function RiskProfileCard({ clientId, existing }: { clientId: string; exis
         <div className="mt-2 text-[13px] text-(--paper-dim)">
           Perfil resultante: <span className="font-semibold text-(--brass)">{PROFILE_LABELS[existing.profile]}</span>{" "}
           <span className="font-mono text-[11px] text-(--muted)">
-            (score {existing.score}/20 · completado {new Date(existing.completedAt).toLocaleDateString()})
+            (score {existing.score}/20 · completado {fmtDate(existing.completedAt)})
           </span>
         </div>
       </div>
