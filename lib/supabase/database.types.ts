@@ -225,6 +225,30 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["prospects"]["Insert"]>;
         Relationships: [];
       };
+      proposal_requests: {
+        Row: {
+          id: string;
+          prospect_id: string;
+          monto_estimado: number | null;
+          horizonte: string | null;
+          perfil: string | null;
+          comentarios: string | null;
+          attachments: Json;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          prospect_id: string;
+          monto_estimado?: number | null;
+          horizonte?: string | null;
+          perfil?: string | null;
+          comentarios?: string | null;
+          attachments?: Json;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["proposal_requests"]["Insert"]>;
+        Relationships: [];
+      };
       advisor_metrics: {
         Row: {
           advisor_id: string;

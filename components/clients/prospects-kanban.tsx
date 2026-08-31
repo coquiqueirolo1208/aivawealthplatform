@@ -6,8 +6,10 @@ import { PROSPECT_STAGES, ONBOARDING_FORM_URL } from "@/lib/constants";
 import { fmtUSD } from "@/lib/format";
 import { addProspect, convertProspect, deleteProspect, updateProspect, updateProspectStage } from "@/lib/actions/prospects";
 import { addProspectTask, markTaskDone } from "@/lib/actions/tasks";
+import { requestProposal, deleteProposalRequest } from "@/lib/actions/proposals";
 import type { Prospect } from "@/lib/queries/prospects";
 import { fmtDate } from "@/lib/format";
+import { ExportExcelButton } from "./export-excel-button";
 
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -91,7 +93,9 @@ export function ProspectsKanban({ prospects, nowMs }: { prospects: Prospect[]; n
   );
 }
 
-function ProspectStageModal({
+/** Also reused outside the kanban for the stat-tile "ver todos" filtered lists — `stageId` only
+ * gates the stage-specific "Convertir a cliente" button, so passing "" there is a harmless no-op. */
+export function ProspectStageModal({
   stageId,
   stageLabel,
   prospects,
@@ -109,6 +113,7 @@ function ProspectStageModal({
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [addingTaskFor, setAddingTaskFor] = useState<string | null>(null);
+  const [requestingProposalFor, setRequestingProposalFor] = useState<string | null>(null);
   const todayIso = new Date(nowMs).toISOString().slice(0, 10);
 
   return (
@@ -123,11 +128,14 @@ function ProspectStageModal({
         className="max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-[10px] p-5.5 shadow-xl"
         style={{ background: "var(--panel)", border: "1px solid var(--line)" }}
       >
-        <div className="mb-3 flex items-center justify-between">
+        <div className="mb-3 flex items-center justify-between gap-2">
           <h3 className="m-0 font-heading text-base font-semibold text-(--paper)">{stageLabel}</h3>
-          <button type="button" className="secondary px-2.5 py-1 text-[11px]" onClick={onClose}>
-            Cerrar
-          </button>
+          <div className="flex items-center gap-1.5">
+            <ExportExcelButton prospects={prospects} filename={`prospectos-${stageLabel}`} className="secondary px-2.5 py-1 text-[11px]" />
+            <button type="button" className="secondary px-2.5 py-1 text-[11px]" onClick={onClose}>
+              Cerrar
+            </button>
+          </div>
         </div>
         {prospects.length === 0 ? (
           <div className="p-6 text-center text-[13px] text-(--muted)">No hay prospectos en esta etapa.</div>
@@ -219,6 +227,108 @@ function ProspectStageModal({
                       <input type="date" name="due" className="text-[11px]" />
                       <button type="submit" className="px-2 py-1 text-[11px]">
                         Agregar
+                      </button>
+                    </form>
+                  )}
+                </div>
+
+                <div className="mt-2 border-t pt-2" style={{ borderColor: "var(--line)" }}>
+                  <div className="mb-1 flex items-center justify-between">
+                    <span className="text-[10.5px] font-semibold tracking-[0.04em] text-(--muted) uppercase">Propuestas solicitadas</span>
+                    <button
+                      type="button"
+                      className="text-[11px] text-(--brass) underline"
+                      onClick={() => setRequestingProposalFor(requestingProposalFor === p.id ? null : p.id)}
+                    >
+                      {requestingProposalFor === p.id ? "cerrar" : "+ pedir propuesta"}
+                    </button>
+                  </div>
+                  {p.proposalRequests.length === 0 ? (
+                    <div className="text-[11px] text-(--muted)">Sin propuestas solicitadas todavía.</div>
+                  ) : (
+                    p.proposalRequests.map((r) => (
+                      <div
+                        key={r.id}
+                        className="mb-1.5 rounded-md px-2 py-1.5 text-[11px]"
+                        style={{ background: "var(--panel)", border: "1px solid var(--line)" }}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-(--paper-dim)">
+                            {fmtDate(r.createdAt)}
+                            {r.montoEstimado != null && ` · ${fmtUSD(r.montoEstimado)}`}
+                            {r.horizonte && ` · ${r.horizonte}`}
+                          </span>
+                          <button
+                            type="button"
+                            className="bg-transparent p-0 text-(--muted)"
+                            onClick={() => deleteProposalRequest(r.id, r.attachments.map((a) => a.path))}
+                          >
+                            ✕
+                          </button>
+                        </div>
+                        {r.comentarios && <div className="mt-0.5 text-(--muted)">{r.comentarios}</div>}
+                        {r.attachments.length > 0 && (
+                          <div className="mt-1 flex flex-wrap gap-2">
+                            {r.attachments.map((a) =>
+                              a.url ? (
+                                <a key={a.path} href={a.url} target="_blank" rel="noopener" className="text-(--brass) underline">
+                                  📎 {a.name}
+                                </a>
+                              ) : (
+                                <span key={a.path} className="text-(--muted)">
+                                  📎 {a.name}
+                                </span>
+                              ),
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    ))
+                  )}
+                  {requestingProposalFor === p.id && (
+                    <form
+                      action={async (fd) => {
+                        await requestProposal(p.id, fd);
+                        setRequestingProposalFor(null);
+                      }}
+                      className="mt-1.5 flex flex-col gap-1.5 rounded-md p-2"
+                      style={{ background: "var(--panel)", border: "1px solid var(--line)" }}
+                    >
+                      <div className="grid grid-cols-2 gap-1.5">
+                        <input
+                          type="text"
+                          name="montoEstimado"
+                          placeholder="Monto a invertir (USD)"
+                          defaultValue={p.aumEstimado ?? ""}
+                          className="text-[11px]"
+                        />
+                        <select name="horizonte" defaultValue="" className="text-[11px]">
+                          <option value="">Horizonte…</option>
+                          <option value="Corto plazo">Corto plazo</option>
+                          <option value="Mediano plazo">Mediano plazo</option>
+                          <option value="Largo plazo">Largo plazo</option>
+                        </select>
+                      </div>
+                      <select name="perfil" defaultValue="" className="text-[11px]">
+                        <option value="">Perfil de riesgo (opcional)</option>
+                        <option value="conservador">Conservador</option>
+                        <option value="balanceado">Moderado</option>
+                        <option value="dinamico">Agresivo</option>
+                      </select>
+                      <textarea
+                        name="comentarios"
+                        placeholder="Comentarios para el equipo de asset (objetivos, restricciones, etc.)"
+                        rows={2}
+                        className="text-[11px]"
+                      />
+                      <div>
+                        <label className="mb-1 block text-[10.5px] text-(--muted)">
+                          Adjuntar estado de cuenta y cualquier otra información (hasta 6 archivos)
+                        </label>
+                        <input type="file" name="files" multiple className="text-[11px]" />
+                      </div>
+                      <button type="submit" className="self-start px-2.5 py-1 text-[11px]">
+                        Enviar pedido
                       </button>
                     </form>
                   )}
