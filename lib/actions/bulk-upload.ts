@@ -23,6 +23,8 @@ export interface ExtractedStatement {
   holdings?: Array<{ nombre: string; valor: number; retornoPct: number | null }>;
   highlights?: string[];
   movimientos?: string[];
+  /** True when /api/ai/extract-statement returned the mock (no ANTHROPIC_API_KEY configured) — never a real reading of the file. */
+  _mock?: boolean;
 }
 
 async function toSnapshotRow(accountId: string, ex: ExtractedStatement) {

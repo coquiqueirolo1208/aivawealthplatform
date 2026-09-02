@@ -96,6 +96,7 @@ export function BulkUploadCard({ clientId, accounts }: { clientId: string; accou
   }
 
   const anyReady = rows.some((r) => r.status === "ready");
+  const anyMock = rows.some((r) => r.extraction?._mock);
 
   return (
     <div className="rounded-[10px] border border-dashed border-(--line) bg-(--panel) p-5">
@@ -115,6 +116,16 @@ export function BulkUploadCard({ clientId, accounts }: { clientId: string; accou
           {analyzing ? "Analizando…" : "Analizar"}
         </button>
       </div>
+
+      {anyMock && (
+        <div
+          className="mt-3 rounded-md px-3 py-2 text-[12px] font-semibold"
+          style={{ background: "var(--panel-2)", border: "1px solid var(--brick)", color: "var(--brick)" }}
+        >
+          ⚠ Modo demo — no hay una clave de IA configurada (ANTHROPIC_API_KEY), así que estos son datos de ejemplo,
+          no una lectura real de los archivos. Revisá y corregí todo antes de guardar.
+        </div>
+      )}
 
       {rows.length > 0 && (
         <table className="mt-4 w-full text-[12.5px]">

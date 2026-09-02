@@ -91,6 +91,15 @@ export function AccountStatementUpload({
         </div>
       ) : (
         <div>
+          {extraction._mock && (
+            <div
+              className="mb-3 rounded-md px-3 py-2 text-[12px] font-semibold"
+              style={{ background: "var(--panel-2)", border: "1px solid var(--brick)", color: "var(--brick)" }}
+            >
+              ⚠ Modo demo — no hay una clave de IA configurada (ANTHROPIC_API_KEY), así que esto es un dato de ejemplo,
+              no una lectura real del PDF. Revisá y corregí todos los valores antes de guardar.
+            </div>
+          )}
           {extraction.custodioDetectado && (
             <div className="mb-3 text-[12px] text-(--muted)">
               Custodio detectado: <strong className="text-(--paper)">{extraction.custodioDetectado}</strong>
