@@ -75,9 +75,13 @@ export async function POST(req: Request) {
 
   const accountPart = accountLabel ? `cuenta: ${accountLabel}. ` : "";
   const monthPart = month ? `El mes de este estado de cuenta es ${month}. ` : "";
-  const text = await callClaude([
-    { role: "user", content: [docBlock, { type: "text", text: accountPart + monthPart + EXTRACTION_SCHEMA_INSTRUCTIONS }] },
-  ]);
+  const text = await callClaude(
+    [{ role: "user", content: [docBlock, { type: "text", text: accountPart + monthPart + EXTRACTION_SCHEMA_INSTRUCTIONS }] }],
+    // The default 1000-token cap truncates mid-JSON for accounts with many holdings
+    // (a full asignacion + holdings + highlights + movimientos array easily exceeds it),
+    // which then fails to parse with a cryptic "Unexpected end of JSON input".
+    { maxTokens: 4096 },
+  );
   const parsed = parseJsonLoose(text);
   return NextResponse.json(parsed);
 }
