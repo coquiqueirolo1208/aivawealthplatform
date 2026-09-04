@@ -4,14 +4,9 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { saveExtractedSnapshot, type ExtractedStatement } from "@/lib/actions/bulk-upload";
 import { CURRENCIES } from "@/lib/constants";
+import { custodianNamesMatch } from "@/lib/finance/custodian";
 
 type Extraction = ExtractedStatement & { custodioDetectado?: string };
-
-function custodianRoughlyMatches(detected: string, accountLabel: string): boolean {
-  const d = detected.toLowerCase();
-  const a = accountLabel.toLowerCase();
-  return d.includes(a) || a.includes(d);
-}
 
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -103,7 +98,7 @@ export function AccountStatementUpload({
           {extraction.custodioDetectado && (
             <div className="mb-3 text-[12px] text-(--muted)">
               Custodio detectado: <strong className="text-(--paper)">{extraction.custodioDetectado}</strong>
-              {!custodianRoughlyMatches(extraction.custodioDetectado, accountLabel) && (
+              {!custodianNamesMatch(extraction.custodioDetectado, accountLabel) && (
                 <span className="ml-1.5 font-semibold text-(--brick)">
                   ⚠ no coincide con &quot;{accountLabel}&quot; — verificá que sea el archivo correcto
                 </span>

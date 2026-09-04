@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { fetchUsdExchangeRate, lastDayOfMonth } from "@/lib/fx";
 
 export interface ExtractedStatement {
+  numeroCuenta?: string | null;
   mes: string;
   valorActual: number | null;
   valorInicial: number | null;
@@ -59,6 +60,14 @@ export async function saveExtractedSnapshot(clientId: string, accountId: string,
     .from("snapshots")
     .upsert(await toSnapshotRow(accountId, extraction), { onConflict: "account_id,month" });
   if (error) throw error;
+  // Backfill the account number from this extraction if the account doesn't have
+  // one yet — lets future uploads match by number instead of fuzzy custodian text.
+  if (extraction.numeroCuenta) {
+    const { data: existing } = await supabase.from("accounts").select("account_number").eq("id", accountId).maybeSingle();
+    if (existing && !existing.account_number) {
+      await supabase.from("accounts").update({ account_number: extraction.numeroCuenta }).eq("id", accountId);
+    }
+  }
   revalidatePath(`/clientes/${clientId}/consolidado`);
   revalidatePath(`/clientes/${clientId}/cuentas/${accountId}`);
 }
@@ -71,7 +80,7 @@ export async function createAccountAndSaveSnapshot(
   const supabase = await createClient();
   const { data: account, error: accError } = await supabase
     .from("accounts")
-    .insert({ client_id: clientId, label: custodianName, custodian: custodianName })
+    .insert({ client_id: clientId, label: custodianName, custodian: custodianName, account_number: extraction.numeroCuenta || null })
     .select("id")
     .single();
   if (accError) throw accError;

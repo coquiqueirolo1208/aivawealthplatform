@@ -4,11 +4,13 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { fmtCurrency } from "@/lib/format";
 import { saveExtractedSnapshot, createAccountAndSaveSnapshot, type ExtractedStatement } from "@/lib/actions/bulk-upload";
+import { matchAccountByCustodian } from "@/lib/finance/custodian";
 
 export interface BulkAccountOption {
   id: string;
   label: string;
   custodian: string | null;
+  accountNumber: string | null;
 }
 
 interface Row {
@@ -26,15 +28,6 @@ function fileToBase64(file: File): Promise<string> {
     r.onerror = reject;
     r.readAsDataURL(file);
   });
-}
-
-function matchAccountByCustodian(detected: string | undefined, accounts: BulkAccountOption[]): string | null {
-  if (!detected) return null;
-  const key = detected.toLowerCase();
-  const matches = accounts.filter(
-    (a) => a.label.toLowerCase().includes(key) || key.includes(a.label.toLowerCase()) || (a.custodian && (a.custodian.toLowerCase().includes(key) || key.includes(a.custodian.toLowerCase()))),
-  );
-  return matches.length === 1 ? matches[0].id : null;
 }
 
 export function BulkUploadCard({ clientId, accounts }: { clientId: string; accounts: BulkAccountOption[] }) {
@@ -58,7 +51,10 @@ export function BulkUploadCard({ clientId, accounts }: { clientId: string; accou
         });
         if (!res.ok) throw new Error(`Error de extracción (${res.status})`);
         const extraction = await res.json();
-        const matched = matchAccountByCustodian(extraction.custodioDetectado, accounts);
+        const matched = matchAccountByCustodian(
+          { numeroCuenta: extraction.numeroCuenta, custodioDetectado: extraction.custodioDetectado },
+          accounts,
+        );
         results.push({
           fileName: file.name,
           status: "ready",

@@ -10,3 +10,4 @@ export * from "./benchmark";
 export * from "./investec";
 export * from "./recommendations";
 export * from "./radar";
+export * from "./custodian";

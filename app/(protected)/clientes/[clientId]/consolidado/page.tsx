@@ -163,7 +163,10 @@ export default async function ConsolidadoPage({ params }: { params: Promise<{ cl
   return (
     <div>
       <div className="mb-4">
-        <BulkUploadCard clientId={clientId} accounts={accs.map((a) => ({ id: a.id, label: a.label, custodian: a.custodian }))} />
+        <BulkUploadCard
+          clientId={clientId}
+          accounts={accs.map((a) => ({ id: a.id, label: a.label, custodian: a.custodian, accountNumber: a.accountNumber }))}
+        />
       </div>
 
       {(usSitus.overThreshold || todPendiente.length > 0) && (
