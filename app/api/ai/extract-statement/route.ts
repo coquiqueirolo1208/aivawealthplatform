@@ -79,8 +79,10 @@ export async function POST(req: Request) {
     [{ role: "user", content: [docBlock, { type: "text", text: accountPart + monthPart + EXTRACTION_SCHEMA_INSTRUCTIONS }] }],
     // The default 1000-token cap truncates mid-JSON for accounts with many holdings
     // (a full asignacion + holdings + highlights + movimientos array easily exceeds it),
-    // which then fails to parse with a cryptic "Unexpected end of JSON input".
-    { maxTokens: 4096 },
+    // which then fails to parse with a cryptic "Unexpected end of JSON input". Sonnet 5
+    // supports up to 128k output tokens on the standard API, so 16000 costs nothing in
+    // practice while removing the budget as a variable entirely.
+    { maxTokens: 16000 },
   );
   const parsed = parseJsonLoose(text);
   return NextResponse.json(parsed);
