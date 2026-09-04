@@ -39,7 +39,11 @@ export async function callClaude(
       ...(typeof opts.temperature === "number" ? { temperature: opts.temperature } : {}),
     }),
   });
-  if (!res.ok) throw new Error(`Anthropic API error (${res.status})`);
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    const detail = body?.error?.message ? `: ${body.error.message}` : "";
+    throw new Error(`Anthropic API error (${res.status})${detail}`);
+  }
   const data = await res.json();
   return (data.content ?? []).map((b: { type: string; text?: string }) => (b.type === "text" ? b.text : "")).join("\n");
 }

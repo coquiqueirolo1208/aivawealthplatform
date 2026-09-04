@@ -82,15 +82,22 @@ export async function POST(req: Request) {
 
   const accountPart = accountLabel ? `cuenta: ${accountLabel}. ` : "";
   const monthPart = month ? `El mes de este estado de cuenta es ${month}. ` : "";
-  const text = await callClaude(
-    [{ role: "user", content: [docBlock, { type: "text", text: accountPart + monthPart + EXTRACTION_SCHEMA_INSTRUCTIONS }] }],
-    // The default 1000-token cap truncates mid-JSON for accounts with many holdings
-    // (a full asignacion + holdings + highlights + movimientos array easily exceeds it),
-    // which then fails to parse with a cryptic "Unexpected end of JSON input". Sonnet 5
-    // supports up to 128k output tokens on the standard API, so 16000 costs nothing in
-    // practice while removing the budget as a variable entirely.
-    { maxTokens: 16000 },
-  );
-  const parsed = parseJsonLoose(text);
-  return NextResponse.json(parsed);
+  try {
+    const text = await callClaude(
+      [{ role: "user", content: [docBlock, { type: "text", text: accountPart + monthPart + EXTRACTION_SCHEMA_INSTRUCTIONS }] }],
+      // The default 1000-token cap truncates mid-JSON for accounts with many holdings
+      // (a full asignacion + holdings + highlights + movimientos array easily exceeds it),
+      // which then fails to parse with a cryptic "Unexpected end of JSON input". Sonnet 5
+      // supports up to 128k output tokens on the standard API, so 16000 costs nothing in
+      // practice while removing the budget as a variable entirely.
+      { maxTokens: 16000 },
+    );
+    const parsed = parseJsonLoose(text);
+    return NextResponse.json(parsed);
+  } catch (err) {
+    // Surface the real cause (e.g. Anthropic's own 400 message) instead of a bare
+    // 500 the client can't do anything with.
+    const message = err instanceof Error ? err.message : String(err);
+    return NextResponse.json({ error: message }, { status: 502 });
+  }
 }

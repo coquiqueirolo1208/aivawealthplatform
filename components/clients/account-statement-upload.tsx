@@ -44,7 +44,10 @@ export function AccountStatementUpload({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ accountLabel, month: null, fileName: file.name, fileBase64, mediaType: file.type }),
       });
-      if (!res.ok) throw new Error(`Error de extracción (${res.status})`);
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.error ? `Error de extracción: ${body.error}` : `Error de extracción (${res.status})`);
+      }
       setExtraction(await res.json());
     } catch (e) {
       setError((e as Error).message);

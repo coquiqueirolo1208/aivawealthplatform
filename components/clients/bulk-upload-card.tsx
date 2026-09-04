@@ -49,7 +49,10 @@ export function BulkUploadCard({ clientId, accounts }: { clientId: string; accou
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ accountLabel: null, month: null, fileName: file.name, fileBase64, mediaType: file.type }),
         });
-        if (!res.ok) throw new Error(`Error de extracción (${res.status})`);
+        if (!res.ok) {
+          const body = await res.json().catch(() => null);
+          throw new Error(body?.error ? `Error de extracción: ${body.error}` : `Error de extracción (${res.status})`);
+        }
         const extraction = await res.json();
         const matched = matchAccountByCustodian(
           { numeroCuenta: extraction.numeroCuenta, custodioDetectado: extraction.custodioDetectado },
