@@ -11,7 +11,14 @@ const EXTRACTION_SCHEMA_INSTRUCTIONS =
   '"holdings":[{"nombre":"string","valor":number,"retornoPct":number_or_null}],"highlights":["string"],"movimientos":["string"]}. ' +
   "valorActual y valorInicial son SIEMPRE el patrimonio neto (activos menos pasivos), en la moneda del estado de cuenta " +
   '("moneda" es la moneda en la que estan expresados esos montos, USD si no se indica otra cosa). flujosNetos/flujosNetosYTD son ' +
-  "SOLO transferencias externas del cliente, nunca compraventa de valores ni dividendos. Numeros JSON validos, sin comas de miles.";
+  "SOLO transferencias externas del cliente (depositos/retiros), nunca compraventa de valores ni dividendos. " +
+  "Para rentMTD/rentYTD cuando no esten informados explicitamente (rentMTDMetodo/rentYTDMetodo = 'estimado'): identifica " +
+  'el saldo al inicio de cada periodo (para YTD, el "Beginning Account Balance" de la columna "Year to Date" o ' +
+  "equivalente al 31 de diciembre del año anterior, NO el saldo inicial del mes) y calcula el retorno restando SIEMPRE " +
+  "los flujos netos del periodo antes de dividir: rentMTD = (valorActual - valorInicial - flujosNetos) / valorInicial * 100; " +
+  "rentYTD = (valorActual - saldoInicioAño - flujosNetosYTD) / saldoInicioAño * 100. Nunca calcules (valorActual - " +
+  "saldoInicioAño) / saldoInicioAño sin restar los flujos — eso confunde aportes/retiros del cliente con ganancia o " +
+  "perdida real de inversion y puede dar un numero muy alejado de la realidad. Numeros JSON validos, sin comas de miles.";
 
 const MOCK_CURRENCIES = ["USD", "USD", "USD", "ARS", "BRL", "CLP", "COP", "MXN"] as const;
 
