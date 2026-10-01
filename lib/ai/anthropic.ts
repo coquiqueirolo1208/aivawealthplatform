@@ -22,7 +22,7 @@ export interface AnthropicMessage {
 
 export async function callClaude(
   messages: AnthropicMessage[],
-  opts: { tools?: unknown[]; temperature?: number; maxTokens?: number } = {},
+  opts: { system?: string; tools?: unknown[]; temperature?: number; maxTokens?: number } = {},
 ): Promise<string> {
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
@@ -35,6 +35,7 @@ export async function callClaude(
       model: "claude-sonnet-5",
       max_tokens: opts.maxTokens ?? 1000,
       messages,
+      ...(opts.system ? { system: opts.system } : {}),
       ...(opts.tools ? { tools: opts.tools } : {}),
       ...(typeof opts.temperature === "number" ? { temperature: opts.temperature } : {}),
     }),
@@ -46,6 +47,14 @@ export async function callClaude(
   }
   const data = await res.json();
   return (data.content ?? []).map((b: { type: string; text?: string }) => (b.type === "text" ? b.text : "")).join("\n");
+}
+
+/** User-facing message for a failed AI call: names the out-of-credits case, which only the account owner can fix. */
+export function aiErrorMessage(e: unknown, fallback: string): string {
+  const msg = e instanceof Error ? e.message : "";
+  if (/credit balance/i.test(msg)) return "La cuenta de IA (Anthropic) se quedó sin créditos — hay que cargar saldo en console.anthropic.com.";
+  if (/\((401|403)\)/.test(msg)) return "La clave de IA (ANTHROPIC_API_KEY) no es válida o fue revocada.";
+  return fallback;
 }
 
 /** Same loose-JSON recovery as the original app's parseJsonLoose, for when the model doesn't return strict JSON. */

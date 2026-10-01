@@ -6,6 +6,7 @@ import { askIaAdvisor } from "@/lib/actions/ia-advisor";
 interface ChatMessage {
   role: "user" | "assistant";
   text: string;
+  failed?: boolean;
 }
 
 export function IaAdvisorModal({ onClose }: { onClose: () => void }) {
@@ -16,14 +17,19 @@ export function IaAdvisorModal({ onClose }: { onClose: () => void }) {
   async function send() {
     const q = question.trim();
     if (!q || thinking) return;
-    setHistory((h) => [...h, { role: "user", text: q }]);
+    // Error placeholders aren't real answers, so they're left out of the conversation sent back.
+    const next = [...history, { role: "user" as const, text: q }];
+    setHistory(next);
     setQuestion("");
     setThinking(true);
     try {
-      const reply = await askIaAdvisor(q);
-      setHistory((h) => [...h, { role: "assistant", text: reply }]);
+      const res = await askIaAdvisor(next.filter((m) => !m.failed).map(({ role, text }) => ({ role, text })));
+      setHistory((h) => [
+        ...h,
+        "reply" in res ? { role: "assistant", text: res.reply } : { role: "assistant", text: res.error, failed: true },
+      ]);
     } catch {
-      setHistory((h) => [...h, { role: "assistant", text: "Hubo un error al responder. Probá de nuevo." }]);
+      setHistory((h) => [...h, { role: "assistant", text: "Hubo un error al responder. Probá de nuevo.", failed: true }]);
     } finally {
       setThinking(false);
     }
@@ -34,9 +40,16 @@ export function IaAdvisorModal({ onClose }: { onClose: () => void }) {
       <div className="flex max-h-[80vh] w-full max-w-lg flex-col rounded-[10px] p-5" style={{ background: "var(--panel)", border: "1px solid var(--line)" }}>
         <div className="mb-3 flex items-center justify-between">
           <h3 className="m-0 font-heading text-base font-semibold text-(--paper)">IA Advisor</h3>
-          <button type="button" className="secondary px-2.5 py-1 text-[11px]" onClick={onClose}>
-            Cerrar
-          </button>
+          <div className="flex gap-1.5">
+            {history.length > 0 && (
+              <button type="button" className="secondary px-2.5 py-1 text-[11px]" disabled={thinking} onClick={() => setHistory([])}>
+                Nueva conversación
+              </button>
+            )}
+            <button type="button" className="secondary px-2.5 py-1 text-[11px]" onClick={onClose}>
+              Cerrar
+            </button>
+          </div>
         </div>
         <div className="mb-3 flex-1 overflow-y-auto rounded-lg p-3" style={{ background: "var(--panel-2)", minHeight: 200 }}>
           {history.length === 0 ? (

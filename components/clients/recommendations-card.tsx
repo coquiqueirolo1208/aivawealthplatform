@@ -1,7 +1,8 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { refreshRecommendations } from "@/lib/actions/recommendations";
+import { fmtDate } from "@/lib/format";
 
 export interface RecommendationsData {
   fecha: string | null;
@@ -22,19 +23,34 @@ export function RecommendationsCard({
   isStale: boolean;
 }) {
   const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
 
   return (
     <div className="mt-4 rounded-[10px] border border-(--line) bg-(--panel) p-5">
-      <div className="flex items-center justify-between">
-        <h3 className="font-heading text-base font-semibold text-(--paper)">Recomendaciones</h3>
-        <button type="button" disabled={pending} onClick={() => startTransition(() => refreshRecommendations(clientId))}>
-          {pending ? "Generando…" : data ? "Actualizar" : "Generar recomendaciones"}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h3 className="font-heading text-base font-semibold text-(--paper)">
+          Recomendaciones IA{" "}
+          {data?.fecha && <span className="text-[11px] font-normal text-(--muted)">generadas el {fmtDate(data.fecha)}</span>}
+        </h3>
+        <button
+          type="button"
+          disabled={pending}
+          onClick={() =>
+            startTransition(async () => {
+              setError(null);
+              const res = await refreshRecommendations(clientId);
+              setError(res.error);
+            })
+          }
+        >
+          {pending ? "Generando… (puede tardar ~1 min)" : data ? "Actualizar" : "Generar recomendaciones"}
         </button>
       </div>
+      {error && <div className="mt-2 text-[12px] font-semibold text-(--brick)">{error}</div>}
 
       {!data ? (
         <div className="mt-3 p-6 text-center text-[13px] text-(--muted)">
-          Todavía no se generaron recomendaciones para este cliente.
+          Todavía no se generaron recomendaciones para este cliente. Se generan solo cuando hacés clic (usa créditos de IA).
         </div>
       ) : (
         <>

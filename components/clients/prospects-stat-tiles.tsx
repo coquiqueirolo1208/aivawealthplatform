@@ -9,38 +9,54 @@ import { ProspectStageModal } from "./prospects-kanban";
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
 
-type FilterKey = "todos" | "nuevos30d" | "nuevos1y" | "aum";
+type FilterKey = "todos" | "nuevos30d" | "nuevos1y" | "aum" | "cerrados";
 
 const FILTER_LABELS: Record<FilterKey, string> = {
   todos: "Todos los prospectos",
   nuevos30d: "Nuevos — últimos 30 días",
   nuevos1y: "Nuevos — último año",
-  aum: "AUM potencial total",
+  aum: "AUM potencial (pipeline abierto)",
+  cerrados: "Prospectos cerrados (ganados y perdidos)",
 };
 
-/** The 4 stat tiles on the Prospectos page, each clickable to drill into the prospects behind the number. */
+/** The stat tiles on the Prospectos page, each clickable to drill into the prospects behind the number. */
 export function ProspectsStatTiles({ prospects, nowMs }: { prospects: Prospect[]; nowMs: number }) {
   const router = useRouter();
   const [openFilter, setOpenFilter] = useState<FilterKey | null>(null);
 
   const nuevos30d = prospects.filter((p) => nowMs - new Date(p.createdAt).getTime() <= THIRTY_DAYS_MS);
   const nuevos1y = prospects.filter((p) => nowMs - new Date(p.createdAt).getTime() <= ONE_YEAR_MS);
-  const aumPotencialTotal = prospects.reduce((s, p) => s + (p.aumEstimado ?? 0), 0);
+  // Potential AUM is the open pipeline: lost prospects and ones already converted to
+  // clients used to be counted too, inflating the figure.
+  const abiertos = prospects.filter((p) => p.stage !== "perdido" && !p.convertedClientId);
+  const aumPotencialTotal = abiertos.reduce((s, p) => s + (p.aumEstimado ?? 0), 0);
+  // Win rate over closed prospects (the home page promised conversion indicators).
+  const ganados = prospects.filter((p) => p.stage === "ganado");
+  const perdidos = prospects.filter((p) => p.stage === "perdido");
+  const cerrados = ganados.length + perdidos.length;
+  const tasaConversion = cerrados ? (ganados.length / cerrados) * 100 : null;
 
   const listByFilter: Record<FilterKey, Prospect[]> = {
     todos: prospects,
     nuevos30d,
     nuevos1y,
-    aum: [...prospects].sort((a, b) => (b.aumEstimado ?? 0) - (a.aumEstimado ?? 0)),
+    aum: [...abiertos].sort((a, b) => (b.aumEstimado ?? 0) - (a.aumEstimado ?? 0)),
+    cerrados: [...ganados, ...perdidos],
   };
 
   return (
     <>
-      <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+      <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-5">
         <StatTile label="Prospectos totales" value={String(prospects.length)} onClick={() => setOpenFilter("todos")} />
         <StatTile label="Nuevos últimos 30 días" value={String(nuevos30d.length)} onClick={() => setOpenFilter("nuevos30d")} />
         <StatTile label="Nuevos último año" value={String(nuevos1y.length)} onClick={() => setOpenFilter("nuevos1y")} />
-        <StatTile label="AUM potencial total" value={fmtUSD(aumPotencialTotal)} onClick={() => setOpenFilter("aum")} />
+        <StatTile label="AUM potencial" value={fmtUSD(aumPotencialTotal)} hint="pipeline abierto" onClick={() => setOpenFilter("aum")} />
+        <StatTile
+          label="Tasa de conversión"
+          value={tasaConversion == null ? "—" : `${tasaConversion.toFixed(0)}%`}
+          hint={`${ganados.length} ganados / ${cerrados} cerrados`}
+          onClick={() => setOpenFilter("cerrados")}
+        />
       </div>
 
       {openFilter && (
@@ -57,11 +73,12 @@ export function ProspectsStatTiles({ prospects, nowMs }: { prospects: Prospect[]
   );
 }
 
-function StatTile({ label, value, onClick }: { label: string; value: string; onClick: () => void }) {
+function StatTile({ label, value, hint, onClick }: { label: string; value: string; hint?: string; onClick: () => void }) {
   return (
     <button type="button" onClick={onClick} className="row-hover rounded-[10px] border border-(--line) bg-(--panel) p-4 text-left">
       <div className="text-[11px] font-semibold tracking-[0.04em] text-(--muted) uppercase">{label}</div>
       <div className="mt-1.5 font-mono text-[20px] font-semibold text-(--paper)">{value}</div>
+      {hint && <div className="mt-0.5 text-[10.5px] text-(--muted)">{hint}</div>}
     </button>
   );
 }

@@ -15,6 +15,7 @@ import {
   computeTodPendienteAccounts,
   computeUsSitusExposure,
   computeYTD,
+  currentFingerprint,
   latestMonth,
   refineAssetAllocation,
   toUsdSnapshotsByMonth,
@@ -34,6 +35,8 @@ import { getTasksForClient } from "@/lib/queries/tasks";
 import { getNotesForClient } from "@/lib/queries/notes";
 import { NotesCard } from "@/components/clients/notes-card";
 import { PersonalDataCard } from "@/components/clients/personal-data-card";
+import { MeetingPrepCard } from "@/components/clients/meeting-prep-card";
+import { RecommendationsCard, type RecommendationsData } from "@/components/clients/recommendations-card";
 
 function buildEvolutionSeries(accounts: AccountWithSnapshots[]): EvolutionSeries[] {
   const allMonths = Array.from(new Set(accounts.flatMap((a) => Object.keys(a.snapshots)))).sort();
@@ -76,6 +79,8 @@ export default async function ConsolidadoPage({ params }: { params: Promise<{ cl
     notes,
     { data: riskProfileRow },
     { data: personalData },
+    { data: recsRow },
+    { data: meetingPrepRow },
   ] = await Promise.all([
       getClientWithSnapshots(supabase, clientId),
       getAdvisorLogoUrl(supabase, user.id),
@@ -86,6 +91,8 @@ export default async function ConsolidadoPage({ params }: { params: Promise<{ cl
       getNotesForClient(supabase, clientId),
       supabase.from("risk_profiles").select("*").eq("client_id", clientId).maybeSingle(),
       supabase.from("clients").select("name, email, celular, direccion, pareja, hijos").eq("id", clientId).maybeSingle(),
+      supabase.from("recommendations_cache").select("*").eq("client_id", clientId).maybeSingle(),
+      supabase.from("meeting_prep_cache").select("text, generated_at").eq("client_id", clientId).maybeSingle(),
     ]);
   if (!client) redirect("/clientes");
 
@@ -477,6 +484,27 @@ export default async function ConsolidadoPage({ params }: { params: Promise<{ cl
             </div>
           )}
         </div>
+      )}
+
+      <MeetingPrepCard clientId={clientId} text={meetingPrepRow?.text ?? null} generatedAt={meetingPrepRow?.generated_at ?? null} />
+      {withData.length > 0 && (
+        <RecommendationsCard
+          clientId={clientId}
+          data={
+            recsRow
+              ? {
+                  fecha: recsRow.fecha,
+                  resumenMercado: recsRow.resumen_mercado,
+                  cambiar: (recsRow.cambiar ?? []) as unknown as RecommendationsData["cambiar"],
+                  mantenerConCondicion: (recsRow.mantener_con_condicion ?? []) as unknown as RecommendationsData["mantenerConCondicion"],
+                  estructurales: (recsRow.estructurales ?? []) as unknown as RecommendationsData["estructurales"],
+                  fingerprint: recsRow.fingerprint,
+                }
+              : null
+          }
+          // Stale once a newer statement has been loaded for any account since they were generated.
+          isStale={!!recsRow && recsRow.fingerprint !== currentFingerprint(accs.map((a) => ({ account: a, snapshots: a.snapshots })))}
+        />
       )}
     </div>
   );

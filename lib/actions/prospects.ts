@@ -85,7 +85,7 @@ export async function convertProspect(prospectId: string, name: string) {
   // instead of inserting a duplicate.
   const { data: prospect, error: prospectError } = await supabase
     .from("prospects")
-    .select("converted_client_id")
+    .select("converted_client_id, empresa, fuente, aum_estimado, notas")
     .eq("id", prospectId)
     .single();
   if (prospectError) throw prospectError;
@@ -99,7 +99,33 @@ export async function convertProspect(prospectId: string, name: string) {
   if (clientError) throw clientError;
   const { error } = await supabase.from("prospects").update({ converted_client_id: client.id }).eq("id", prospectId);
   if (error) throw error;
+
+  // Carry what was learned during prospecting into the new client file, instead of
+  // leaving it behind on a prospect card nobody opens again.
+  const resumen = [
+    prospect.empresa && `Empresa: ${prospect.empresa}`,
+    prospect.fuente && `Fuente: ${prospect.fuente}`,
+    prospect.aum_estimado != null && `AUM estimado como prospecto: USD ${prospect.aum_estimado.toLocaleString("en-US")}`,
+    prospect.notas && `Notas: ${prospect.notas}`,
+  ].filter(Boolean);
+  if (resumen.length) {
+    const { error: noteError } = await supabase
+      .from("client_notes")
+      .insert({ client_id: client.id, texto: `Convertido desde prospecto.\n${resumen.join("\n")}` });
+    if (noteError) throw noteError;
+  }
+  // Pending tasks follow the person to their client file. Both columns change in the
+  // same update so the "exactly one of client/prospect" check holds. Completed tasks
+  // stay with the prospect as its history.
+  const { error: tasksError } = await supabase
+    .from("tasks")
+    .update({ client_id: client.id, prospect_id: null })
+    .eq("prospect_id", prospectId)
+    .eq("done", false);
+  if (tasksError) throw tasksError;
+
   revalidatePath("/clientes");
   revalidatePath("/prospectos");
+  revalidatePath("/tareas-pendientes");
   return client.id;
 }
