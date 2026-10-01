@@ -66,6 +66,13 @@ export async function updateProspect(prospectId: string, formData: FormData) {
 
 export async function deleteProspect(prospectId: string) {
   const { supabase } = await requireAdvisorId();
+  // Remove proposal attachments first: the row delete cascades proposal_requests, but
+  // the storage objects would stay behind — and once the prospect is gone, the
+  // bucket's ownership policy (joined through prospects) blocks deleting them.
+  const { data: files } = await supabase.storage.from("proposal-attachments").list(prospectId);
+  if (files?.length) {
+    await supabase.storage.from("proposal-attachments").remove(files.map((f) => `${prospectId}/${f.name}`));
+  }
   const { error } = await supabase.from("prospects").delete().eq("id", prospectId);
   if (error) throw error;
   revalidatePath("/clientes");
@@ -74,6 +81,16 @@ export async function deleteProspect(prospectId: string) {
 
 export async function convertProspect(prospectId: string, name: string) {
   const { supabase, advisorId } = await requireAdvisorId();
+  // Idempotent: a second click (or a retry) returns the client already created
+  // instead of inserting a duplicate.
+  const { data: prospect, error: prospectError } = await supabase
+    .from("prospects")
+    .select("converted_client_id")
+    .eq("id", prospectId)
+    .single();
+  if (prospectError) throw prospectError;
+  if (prospect.converted_client_id) return prospect.converted_client_id;
+
   const { data: client, error: clientError } = await supabase
     .from("clients")
     .insert({ advisor_id: advisorId, name })

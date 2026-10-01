@@ -4,6 +4,7 @@ import { useState } from "react";
 import { addTask, markTaskDone } from "@/lib/actions/tasks";
 import type { ClientTask } from "@/lib/queries/tasks";
 import { fmtDate } from "@/lib/format";
+import { SubmitButton } from "@/components/ui/submit-button";
 
 export function TasksCard({ clientId, tasks }: { clientId: string; tasks: ClientTask[] }) {
   const [adding, setAdding] = useState(false);
@@ -34,9 +35,7 @@ export function TasksCard({ clientId, tasks }: { clientId: string; tasks: Client
               {t.due && <span className="ml-1.5 font-mono text-[11px] text-(--muted)">(vence {fmtDate(t.due)})</span>}
             </span>
             <form action={markTaskDone.bind(null, t.id)}>
-              <button type="submit" className="secondary px-2 py-1 text-[11px]">
-                Marcar hecha
-              </button>
+              <SubmitButton className="secondary px-2 py-1 text-[11px]">Marcar hecha</SubmitButton>
             </form>
           </div>
         ))
@@ -52,9 +51,7 @@ export function TasksCard({ clientId, tasks }: { clientId: string; tasks: Client
           <input type="text" name="title" placeholder="Título *" required autoFocus className="col-span-2" />
           <input type="date" name="due" />
           <div className="flex gap-1.5">
-            <button type="submit" className="px-2.5 py-1.5 text-[12px]">
-              Agregar
-            </button>
+            <SubmitButton className="px-2.5 py-1.5 text-[12px]">Agregar</SubmitButton>
             <button type="button" className="secondary px-2.5 py-1.5 text-[12px]" onClick={() => setAdding(false)}>
               ✕
             </button>

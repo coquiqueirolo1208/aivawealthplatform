@@ -5,6 +5,8 @@ import { usePathname, useRouter } from "next/navigation";
 import { saveSnapshotManual, deleteSnapshot } from "@/lib/actions/accounts";
 import type { Snapshot } from "@/lib/finance/types";
 import { CURRENCIES } from "@/lib/constants";
+import { SubmitButton } from "@/components/ui/submit-button";
+import { useArmedConfirm } from "@/components/ui/use-armed-confirm";
 
 export function SnapshotForm({
   clientId,
@@ -20,12 +22,12 @@ export function SnapshotForm({
   existing: Snapshot | null;
 }) {
   const [newMonth, setNewMonth] = useState("");
-  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const confirm = useArmedConfirm<true>();
   const router = useRouter();
   const pathname = usePathname();
 
   function onSelectMonth(month: string) {
-    setConfirmingDelete(false);
+    confirm.disarm();
     router.push(`${pathname}?month=${month}`);
   }
 
@@ -65,7 +67,7 @@ export function SnapshotForm({
         <input type="hidden" name="month" value={selectedMonth} />
         <label className="block">
           <span className="mb-1 block text-[11px] text-(--muted)">Moneda del estado de cuenta</span>
-          <select name="moneda" defaultValue={existing?.moneda ?? "USD"} className="w-full">
+          <select name="moneda" key={selectedMonth} defaultValue={existing?.moneda ?? "USD"} className="w-full">
             {CURRENCIES.map((c) => (
               <option key={c.code} value={c.code}>
                 {c.label}
@@ -85,17 +87,18 @@ export function SnapshotForm({
           </div>
         )}
         <div className="col-span-full flex gap-2">
-          <button type="submit" disabled={!selectedMonth}>
+          <SubmitButton disabled={!selectedMonth} pendingText="Guardando…">
             Guardar {selectedMonth || "…"}
-          </button>
+          </SubmitButton>
           {existing &&
-            (confirmingDelete ? (
+            (confirm.armed ? (
               <button
                 type="button"
                 className="bg-(--brick)"
                 onClick={() => {
+                  if (!confirm.ready()) return;
                   deleteSnapshot(clientId, accountId, selectedMonth).then(() => {
-                    setConfirmingDelete(false);
+                    confirm.disarm();
                     router.refresh();
                   });
                 }}
@@ -103,7 +106,7 @@ export function SnapshotForm({
                 ¿Confirmar borrado de {selectedMonth}?
               </button>
             ) : (
-              <button type="button" className="secondary" onClick={() => setConfirmingDelete(true)}>
+              <button type="button" className="secondary" onClick={() => confirm.arm(true)}>
                 Borrar este mes
               </button>
             ))}

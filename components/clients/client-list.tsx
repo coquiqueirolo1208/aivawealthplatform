@@ -5,6 +5,8 @@ import Link from "next/link";
 import { fmtUSD } from "@/lib/format";
 import { CLIENT_PROCESSES_URL } from "@/lib/constants";
 import { addClient, deleteClient } from "@/lib/actions/clients";
+import { SubmitButton } from "@/components/ui/submit-button";
+import { useArmedConfirm } from "@/components/ui/use-armed-confirm";
 
 export interface ClientRow {
   id: string;
@@ -16,7 +18,7 @@ export interface ClientRow {
 
 export function ClientList({ clients }: { clients: ClientRow[] }) {
   const [search, setSearch] = useState("");
-  const [confirmingId, setConfirmingId] = useState<string | null>(null);
+  const confirm = useArmedConfirm<string>();
   const [adding, setAdding] = useState(false);
   const [pending, startTransition] = useTransition();
 
@@ -83,12 +85,14 @@ export function ClientList({ clients }: { clients: ClientRow[] }) {
                 <span className="font-mono text-[11.5px] text-(--muted)">
                   {c.aum != null ? fmtUSD(c.aum) : "—"} · {c.nCustodios === 1 ? "1 custodio" : `${c.nCustodios} custodios`}
                 </span>
-                {confirmingId === c.id ? (
+                {confirm.armed === c.id ? (
                   <button
                     type="button"
                     className="bg-(--brick) text-[11px]"
                     disabled={pending}
-                    onClick={() => startTransition(() => deleteClient(c.id))}
+                    onClick={() => {
+                      if (confirm.ready()) startTransition(() => deleteClient(c.id));
+                    }}
                   >
                     ¿Confirmar borrado?
                   </button>
@@ -96,7 +100,7 @@ export function ClientList({ clients }: { clients: ClientRow[] }) {
                   <button
                     type="button"
                     className="bg-transparent text-[11px] text-(--muted)"
-                    onClick={() => setConfirmingId(c.id)}
+                    onClick={() => confirm.arm(c.id)}
                   >
                     ✕ borrar
                   </button>
@@ -109,7 +113,7 @@ export function ClientList({ clients }: { clients: ClientRow[] }) {
       {adding ? (
         <form action={addClient} className="mt-1.5 flex gap-2">
           <input type="text" name="name" placeholder="Nombre del cliente" autoFocus required className="flex-1" />
-          <button type="submit">Guardar</button>
+          <SubmitButton pendingText="Guardando…">Guardar</SubmitButton>
           <button type="button" className="secondary" onClick={() => setAdding(false)}>
             Cancelar
           </button>

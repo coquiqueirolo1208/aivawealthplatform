@@ -4,6 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { addAccount, deleteAccount } from "@/lib/actions/accounts";
+import { SubmitButton } from "@/components/ui/submit-button";
+import { useArmedConfirm } from "@/components/ui/use-armed-confirm";
 
 export interface AccountTabInfo {
   id: string;
@@ -14,7 +16,7 @@ export function ClientTabs({ clientId, accounts }: { clientId: string; accounts:
   const pathname = usePathname();
   const router = useRouter();
   const [adding, setAdding] = useState(false);
-  const [confirmingId, setConfirmingId] = useState<string | null>(null);
+  const confirm = useArmedConfirm<string>();
 
   // whitespace-nowrap keeps each tab's full label (the custodian name, for account
   // tabs) on one line — the tab itself grows to fit it instead of wrapping/clipping,
@@ -59,12 +61,14 @@ export function ClientTabs({ clientId, accounts }: { clientId: string; accounts:
             >
               {a.label}
             </Link>
-            {confirmingId === a.id ? (
+            {confirm.armed === a.id ? (
               <button
                 type="button"
                 title={`Confirmar: borrar "${a.label}" y todos sus datos`}
                 className="absolute top-1.5 right-1.5 bg-(--brick) p-0 px-1 text-[9px] text-white"
                 onClick={() => {
+                  if (!confirm.ready()) return;
+                  confirm.disarm();
                   deleteAccount(clientId, a.id).then(() => router.refresh());
                 }}
               >
@@ -75,7 +79,7 @@ export function ClientTabs({ clientId, accounts }: { clientId: string; accounts:
                 type="button"
                 title="Borrar cuenta"
                 className="absolute top-1.5 right-1.5 bg-transparent p-0 text-[10px] text-(--muted)"
-                onClick={() => setConfirmingId(a.id)}
+                onClick={() => confirm.arm(a.id)}
               >
                 ✕
               </button>
@@ -93,9 +97,7 @@ export function ClientTabs({ clientId, accounts }: { clientId: string; accounts:
         >
           <input type="text" name="label" placeholder="Nombre de cuenta" autoFocus required className="w-36" />
           <input type="text" name="custodian" placeholder="Custodio" className="w-32" />
-          <button type="submit" className="px-2.5 py-1.5 text-[12px]">
-            +
-          </button>
+          <SubmitButton className="px-2.5 py-1.5 text-[12px]">+</SubmitButton>
           <button type="button" className="secondary px-2.5 py-1.5 text-[12px]" onClick={() => setAdding(false)}>
             ✕
           </button>

@@ -3,6 +3,7 @@ import type { RadarData } from "@/lib/finance/radar";
 import type { PendingTask } from "@/lib/queries/tasks";
 import { markTaskDone } from "@/lib/actions/tasks";
 import { fmtDate, fmtUSD } from "@/lib/format";
+import { SubmitButton } from "@/components/ui/submit-button";
 
 export function ClientLink({ clientId, clientName }: { clientId: string; clientName: string }) {
   return (
@@ -75,9 +76,7 @@ export function PendingTaskRow({ t }: { t: PendingTask }) {
         — {t.title} {t.due && <span className="font-mono text-(--muted)">(vence {fmtDate(t.due)})</span>}
       </span>
       <form action={markTaskDone.bind(null, t.id)}>
-        <button type="submit" className="secondary px-2.5 py-1 text-[11px]">
-          Marcar hecha
-        </button>
+        <SubmitButton className="secondary px-2.5 py-1 text-[11px]">Marcar hecha</SubmitButton>
       </form>
     </div>
   );

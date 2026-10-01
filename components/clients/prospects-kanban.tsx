@@ -1,7 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { SubmitButton } from "@/components/ui/submit-button";
+import { useArmedConfirm } from "@/components/ui/use-armed-confirm";
+import { todayIso } from "@/lib/dates";
 import { PROSPECT_STAGES, ONBOARDING_FORM_URL } from "@/lib/constants";
 import { fmtUSD } from "@/lib/format";
 import { addProspect, convertProspect, deleteProspect, updateProspect, updateProspectStage } from "@/lib/actions/prospects";
@@ -50,9 +53,9 @@ export function ProspectsKanban({ prospects, nowMs }: { prospects: Prospect[]; n
           <input type="text" name="proximaAccion" placeholder="Próxima acción" />
           <input type="date" name="proximaFecha" />
           <textarea name="notas" placeholder="Notas" className="col-span-2" />
-          <button type="submit" className="col-span-full">
+          <SubmitButton className="col-span-full" pendingText="Guardando…">
             Guardar
-          </button>
+          </SubmitButton>
         </form>
       )}
 
@@ -110,11 +113,13 @@ export function ProspectStageModal({
   onConverted: (clientId: string) => void;
   nowMs: number;
 }) {
-  const [confirmingId, setConfirmingId] = useState<string | null>(null);
+  // Keys are prefixed ("prospect:<id>" / "proposal:<id>") so one confirm state covers both delete buttons.
+  const confirm = useArmedConfirm<string>();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [addingTaskFor, setAddingTaskFor] = useState<string | null>(null);
   const [requestingProposalFor, setRequestingProposalFor] = useState<string | null>(null);
-  const todayIso = new Date(nowMs).toISOString().slice(0, 10);
+  const [converting, startConverting] = useTransition();
+  const today = todayIso(new Date(nowMs));
 
   return (
     <div
@@ -159,9 +164,9 @@ export function ProspectStageModal({
                 <input type="date" name="proximaFecha" defaultValue={p.proximaFecha ?? ""} />
                 <textarea name="notas" placeholder="Notas" defaultValue={p.notas ?? ""} className="col-span-2" />
                 <div className="col-span-full flex gap-2">
-                  <button type="submit" className="flex-1">
+                  <SubmitButton className="flex-1" pendingText="Guardando…">
                     Guardar
-                  </button>
+                  </SubmitButton>
                   <button type="button" className="secondary flex-1" onClick={() => setEditingId(null)}>
                     Cancelar
                   </button>
@@ -199,7 +204,7 @@ export function ProspectStageModal({
                     p.tasks
                       .filter((t) => !t.done)
                       .map((t) => {
-                        const overdue = !!t.due && t.due < todayIso;
+                        const overdue = !!t.due && t.due < today;
                         return (
                           <div key={t.id} className="mb-1 flex items-center justify-between gap-2 text-[11.5px]">
                             <span style={overdue ? { color: "var(--brick)" } : undefined} className={overdue ? undefined : "text-(--paper-dim)"}>
@@ -207,9 +212,7 @@ export function ProspectStageModal({
                               {t.due && ` (${overdue ? "venció" : "vence"} ${fmtDate(t.due)})`}
                             </span>
                             <form action={markTaskDone.bind(null, t.id)}>
-                              <button type="submit" className="secondary px-1.5 py-0.5 text-[10px]">
-                                Marcar hecha
-                              </button>
+                              <SubmitButton className="secondary px-1.5 py-0.5 text-[10px]">Marcar hecha</SubmitButton>
                             </form>
                           </div>
                         );
@@ -225,9 +228,7 @@ export function ProspectStageModal({
                     >
                       <input type="text" name="title" placeholder="Título *" required autoFocus className="flex-1 text-[11px]" />
                       <input type="date" name="due" className="text-[11px]" />
-                      <button type="submit" className="px-2 py-1 text-[11px]">
-                        Agregar
-                      </button>
+                      <SubmitButton className="px-2 py-1 text-[11px]">Agregar</SubmitButton>
                     </form>
                   )}
                 </div>
@@ -258,13 +259,29 @@ export function ProspectStageModal({
                             {r.montoEstimado != null && ` · ${fmtUSD(r.montoEstimado)}`}
                             {r.horizonte && ` · ${r.horizonte}`}
                           </span>
-                          <button
-                            type="button"
-                            className="bg-transparent p-0 text-(--muted)"
-                            onClick={() => deleteProposalRequest(r.id, r.attachments.map((a) => a.path))}
-                          >
-                            ✕
-                          </button>
+                          {confirm.armed === `proposal:${r.id}` ? (
+                            <button
+                              type="button"
+                              className="bg-(--brick) px-1.5 py-0.5 text-[10px]"
+                              onClick={() =>
+                                confirm.ready() &&
+                                deleteProposalRequest(
+                                  r.id,
+                                  r.attachments.map((a) => a.path),
+                                )
+                              }
+                            >
+                              ¿Confirmar?
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              className="bg-transparent p-0 text-(--muted)"
+                              onClick={() => confirm.arm(`proposal:${r.id}`)}
+                            >
+                              ✕
+                            </button>
+                          )}
                         </div>
                         {r.comentarios && <div className="mt-0.5 text-(--muted)">{r.comentarios}</div>}
                         {r.attachments.length > 0 && (
@@ -327,9 +344,9 @@ export function ProspectStageModal({
                         </label>
                         <input type="file" name="files" multiple className="text-[11px]" />
                       </div>
-                      <button type="submit" className="self-start px-2.5 py-1 text-[11px]">
+                      <SubmitButton className="self-start px-2.5 py-1 text-[11px]" pendingText="Enviando…">
                         Enviar pedido
-                      </button>
+                      </SubmitButton>
                     </form>
                   )}
                 </div>
@@ -354,9 +371,14 @@ export function ProspectStageModal({
                       <button
                         type="button"
                         className="px-2.5 py-1 text-[11px]"
-                        onClick={() => convertProspect(p.id, p.name).then((id) => onConverted(id))}
+                        disabled={converting}
+                        onClick={() =>
+                          startConverting(async () => {
+                            onConverted(await convertProspect(p.id, p.name));
+                          })
+                        }
                       >
-                        Convertir a cliente
+                        {converting ? "Convirtiendo…" : "Convertir a cliente"}
                       </button>
                     </>
                   )}
@@ -364,12 +386,16 @@ export function ProspectStageModal({
                   <button type="button" className="secondary px-2.5 py-1 text-[11px]" onClick={() => setEditingId(p.id)}>
                     Editar
                   </button>
-                  {confirmingId === p.id ? (
-                    <button type="button" className="bg-(--brick) px-2 py-1 text-[11px]" onClick={() => deleteProspect(p.id)}>
+                  {confirm.armed === `prospect:${p.id}` ? (
+                    <button
+                      type="button"
+                      className="bg-(--brick) px-2 py-1 text-[11px]"
+                      onClick={() => confirm.ready() && deleteProspect(p.id)}
+                    >
                       ¿Confirmar borrado?
                     </button>
                   ) : (
-                    <button type="button" className="secondary px-2.5 py-1 text-[11px]" onClick={() => setConfirmingId(p.id)}>
+                    <button type="button" className="secondary px-2.5 py-1 text-[11px]" onClick={() => confirm.arm(`prospect:${p.id}`)}>
                       Borrar
                     </button>
                   )}

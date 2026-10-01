@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { publishDailyReport } from "@/lib/actions/daily-reports";
 import type { DailyReport } from "@/lib/queries/daily-reports";
+import { SubmitButton } from "@/components/ui/submit-button";
+import { todayIso } from "@/lib/dates";
 
 function fmtReportDate(ymd: string) {
   const months = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
@@ -34,12 +36,12 @@ export function DailyReports({ reports }: { reports: DailyReport[] }) {
           style={{ background: "var(--panel-2)", border: "1px solid var(--line)" }}
         >
           <div className="flex flex-wrap gap-2">
-            <input type="date" name="date" required defaultValue={new Date().toISOString().slice(0, 10)} />
+            <input type="date" name="date" required defaultValue={todayIso()} />
             <input type="text" name="title" placeholder="Título (opcional)" className="flex-1" />
           </div>
           <input type="file" name="file" accept="application/pdf" />
           <textarea name="content" placeholder="O pegá el texto del informe acá…" rows={4} />
-          <button type="submit">Publicar</button>
+          <SubmitButton pendingText="Publicando…">Publicar</SubmitButton>
         </form>
       )}
 

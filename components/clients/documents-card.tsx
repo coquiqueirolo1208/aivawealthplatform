@@ -4,6 +4,8 @@ import { useState } from "react";
 import { addDocument, deleteDocument } from "@/lib/actions/documents";
 import { docStatusInfo } from "@/lib/documents";
 import { fmtDate } from "@/lib/format";
+import { SubmitButton } from "@/components/ui/submit-button";
+import { useArmedConfirm } from "@/components/ui/use-armed-confirm";
 
 export interface ClientDocument {
   id: string;
@@ -15,7 +17,7 @@ export interface ClientDocument {
 
 export function DocumentsCard({ clientId, documents }: { clientId: string; documents: ClientDocument[] }) {
   const [adding, setAdding] = useState(false);
-  const [confirmingId, setConfirmingId] = useState<string | null>(null);
+  const confirm = useArmedConfirm<string>();
   const sorted = [...documents].sort((a, b) => (a.vencimiento ?? "9999").localeCompare(b.vencimiento ?? "9999"));
 
   return (
@@ -37,12 +39,16 @@ export function DocumentsCard({ clientId, documents }: { clientId: string; docum
                 <span className="text-[11px] font-semibold uppercase" style={{ color }}>
                   {status.label}
                 </span>
-                {confirmingId === d.id ? (
-                  <button type="button" className="bg-(--brick) px-2 py-1 text-[10px]" onClick={() => deleteDocument(clientId, d.id)}>
+                {confirm.armed === d.id ? (
+                  <button
+                    type="button"
+                    className="bg-(--brick) px-2 py-1 text-[10px]"
+                    onClick={() => confirm.ready() && deleteDocument(clientId, d.id)}
+                  >
                     ¿Confirmar?
                   </button>
                 ) : (
-                  <button type="button" className="bg-transparent p-0 text-[11px] text-(--muted)" onClick={() => setConfirmingId(d.id)}>
+                  <button type="button" className="bg-transparent p-0 text-[11px] text-(--muted)" onClick={() => confirm.arm(d.id)}>
                     ✕
                   </button>
                 )}
@@ -66,9 +72,7 @@ export function DocumentsCard({ clientId, documents }: { clientId: string; docum
           </select>
           <input type="date" name="vencimiento" />
           <div className="flex gap-1.5">
-            <button type="submit" className="px-2.5 py-1.5 text-[12px]">
-              Agregar
-            </button>
+            <SubmitButton className="px-2.5 py-1.5 text-[12px]">Agregar</SubmitButton>
             <button type="button" className="secondary px-2.5 py-1.5 text-[12px]" onClick={() => setAdding(false)}>
               ✕
             </button>

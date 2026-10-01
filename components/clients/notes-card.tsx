@@ -4,10 +4,12 @@ import { useState } from "react";
 import { addNote, deleteNote } from "@/lib/actions/notes";
 import type { ClientNote } from "@/lib/queries/notes";
 import { fmtDateTime } from "@/lib/format";
+import { SubmitButton } from "@/components/ui/submit-button";
+import { useArmedConfirm } from "@/components/ui/use-armed-confirm";
 
 export function NotesCard({ clientId, notes }: { clientId: string; notes: ClientNote[] }) {
   const [adding, setAdding] = useState(false);
-  const [confirmingId, setConfirmingId] = useState<string | null>(null);
+  const confirm = useArmedConfirm<string>();
 
   return (
     <div className="rounded-[10px] border border-(--line) bg-(--panel) p-5">
@@ -27,9 +29,9 @@ export function NotesCard({ clientId, notes }: { clientId: string; notes: Client
           className="mb-3 flex flex-col gap-2"
         >
           <textarea name="texto" placeholder="¿Qué se habló / acordó?" required autoFocus rows={2} />
-          <button type="submit" className="self-start px-3.5 py-1.5 text-[12px]">
+          <SubmitButton className="self-start px-3.5 py-1.5 text-[12px]" pendingText="Guardando…">
             Guardar
-          </button>
+          </SubmitButton>
         </form>
       )}
 
@@ -46,12 +48,16 @@ export function NotesCard({ clientId, notes }: { clientId: string; notes: Client
               <span className="font-mono text-[11px] text-(--muted)">
                 {fmtDateTime(n.createdAt)}
               </span>
-              {confirmingId === n.id ? (
-                <button type="button" className="bg-(--brick) px-2 py-0.5 text-[10px]" onClick={() => deleteNote(clientId, n.id)}>
+              {confirm.armed === n.id ? (
+                <button
+                  type="button"
+                  className="bg-(--brick) px-2 py-0.5 text-[10px]"
+                  onClick={() => confirm.ready() && deleteNote(clientId, n.id)}
+                >
                   ¿Confirmar?
                 </button>
               ) : (
-                <button type="button" className="bg-transparent p-0 text-[11px] text-(--muted)" onClick={() => setConfirmingId(n.id)}>
+                <button type="button" className="bg-transparent p-0 text-[11px] text-(--muted)" onClick={() => confirm.arm(n.id)}>
                   ✕
                 </button>
               )}
