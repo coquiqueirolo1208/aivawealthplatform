@@ -10,6 +10,7 @@ import {
   computeCostsYTD,
   computeMTD,
   computeYTD,
+  consolidatedMonthlyValues,
   latestMonth,
   type BenchmarkLevel,
 } from "@/lib/finance";
@@ -69,36 +70,12 @@ function weightedAvg(parts: Array<{ value: number | null; weight: number }>): nu
   return w ? ok.reduce((s, p) => s + p.value * p.weight, 0) / w : null;
 }
 
-/**
- * Consolidated value per month for the evolution chart. A month is only plotted when
- * every account that was open around it (has statements both before/at and at/after
- * it) has that month's statement — summing a partial set made the line dip whenever
- * one custodian's statement was missing.
- */
-function buildEvolution(accs: ReportAccountInput[], asOf: string): Array<{ month: string; value: number }> {
-  const ranges = accs
-    .map((a) => {
-      const ms = Object.keys(a.snapshots).sort();
-      return ms.length ? { a, first: ms[0], last: ms[ms.length - 1] } : null;
-    })
-    .filter((r) => r != null);
-  const months = [...new Set(accs.flatMap((a) => Object.keys(a.snapshots)))].filter((m) => m <= asOf).sort();
-  const out: Array<{ month: string; value: number }> = [];
-  for (const m of months) {
-    let sum = 0;
-    let complete = true;
-    for (const r of ranges) {
-      if (m < r.first || m > r.last) continue;
-      const v = r.a.snapshots[m]?.valorActual;
-      if (typeof v !== "number") {
-        complete = false;
-        break;
-      }
-      sum += v;
-    }
-    if (complete) out.push({ month: m, value: sum });
-  }
-  return out.slice(-REPORT_EVOLUTION_MONTHS);
+/** Consolidated value per month for the evolution chart (accounts already cut at the report month). */
+function buildEvolution(accs: ReportAccountInput[]): Array<{ month: string; value: number }> {
+  return Object.entries(consolidatedMonthlyValues(accs))
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([month, value]) => ({ month, value }))
+    .slice(-REPORT_EVOLUTION_MONTHS);
 }
 
 export function buildClientReportData(
@@ -188,7 +165,7 @@ export function buildClientReportData(
     flujosYTD,
     costosYTD,
     costosCompletos: withCosts.length === thisYear.length && withCosts.every((c) => c.complete),
-    evolution: buildEvolution(accs, asOfMonth),
+    evolution: buildEvolution(accs),
     allocation,
     accounts: perAccount.map((p) => ({
       label: p.label,

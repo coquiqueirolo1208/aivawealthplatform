@@ -49,6 +49,8 @@ export interface Database {
           household_label: string | null;
           is_demo: boolean;
           created_at: string;
+          fee_pct: number | null;
+          fee_min_annual: number | null;
         };
         Insert: {
           id?: string;
@@ -63,6 +65,8 @@ export interface Database {
           household_label?: string | null;
           is_demo?: boolean;
           created_at?: string;
+          fee_pct?: number | null;
+          fee_min_annual?: number | null;
         };
         Update: Partial<Database["public"]["Tables"]["clients"]["Insert"]>;
         Relationships: [];
@@ -247,6 +251,32 @@ export interface Database {
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["proposal_requests"]["Insert"]>;
+        Relationships: [];
+      };
+      fee_records: {
+        Row: {
+          id: string;
+          client_id: string;
+          period: string;
+          base_aum: number | null;
+          fee_pct: number | null;
+          amount: number;
+          status: "facturado" | "cobrado";
+          invoiced_at: string;
+          paid_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          client_id: string;
+          period: string;
+          base_aum?: number | null;
+          fee_pct?: number | null;
+          amount: number;
+          status: "facturado" | "cobrado";
+          invoiced_at?: string;
+          paid_at?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["fee_records"]["Insert"]>;
         Relationships: [];
       };
       advisor_metrics: {

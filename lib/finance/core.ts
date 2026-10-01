@@ -252,6 +252,38 @@ export function buildPositionChanges(
   return { compras, ventas };
 }
 
+/**
+ * A client's consolidated value per month (sum of its accounts). A month is only
+ * included when every account open around it (statements both at/before and at/after
+ * it) has that month's statement — summing a partial set made the total dip whenever
+ * one custodian's statement was missing.
+ */
+export function consolidatedMonthlyValues(accounts: Array<{ snapshots: SnapshotsByMonth }>): Record<string, number> {
+  const ranges = accounts
+    .map((a) => {
+      const ms = Object.keys(a.snapshots).sort();
+      return ms.length ? { snaps: a.snapshots, first: ms[0], last: ms[ms.length - 1] } : null;
+    })
+    .filter((r) => r != null);
+  const months = [...new Set(accounts.flatMap((a) => Object.keys(a.snapshots)))].sort();
+  const out: Record<string, number> = {};
+  for (const m of months) {
+    let sum = 0;
+    let complete = true;
+    for (const r of ranges) {
+      if (m < r.first || m > r.last) continue;
+      const v = r.snaps[m]?.valorActual;
+      if (typeof v !== "number") {
+        complete = false;
+        break;
+      }
+      sum += v;
+    }
+    if (complete) out[m] = sum;
+  }
+  return out;
+}
+
 export interface Trailing12mResult {
   value: number;
   weight: number;

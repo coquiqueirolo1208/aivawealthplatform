@@ -4,6 +4,7 @@ import { getAdvisorClientsWithSnapshots } from "@/lib/queries/portfolio";
 import { getPendingTasksForAdvisor } from "@/lib/queries/tasks";
 import { getClientBirthdays } from "@/lib/queries/clients";
 import { loadRadarData } from "@/lib/queries/radar";
+import { loadFeesData } from "@/lib/queries/fees";
 import { RadarPanel } from "@/components/office/radar-panel";
 import {
   aggregateAllocation,
@@ -12,8 +13,10 @@ import {
   computeCostsYTD,
   computeOfficeAumSeries,
   computeUpcomingBirthdays,
+  lastClosedQuarter,
   latestMonth,
   monthsInRange,
+  quarterLabel,
   toUsdSnapshotsByMonth,
 } from "@/lib/finance";
 import { fmtPct, fmtUSD, pctClass } from "@/lib/format";
@@ -32,12 +35,12 @@ export default async function OficinaPage() {
   const today = todayIso();
 
   // All independent — one parallel round instead of six awaits in a row.
-  const [clientsRaw, { data: demoMetrics }, { count: newClientsYtd }, { count: newProspectsYtd }, pendingTasks, radarData, clientBirthdays] =
+  const feeQuarter = lastClosedQuarter(today);
+  const [clientsRaw, fees, { count: newClientsYtd }, { count: newProspectsYtd }, pendingTasks, radarData, clientBirthdays] =
     await Promise.all([
       getAdvisorClientsWithSnapshots(supabase, user.id),
-      // Comisiones del trimestre isn't derivable from client/account data at all —
-      // shown as a fixed reference figure from the seeded demo dataset, not editable.
-      supabase.from("advisor_metrics").select("comisiones_q").eq("is_demo", true).maybeSingle(),
+      // Last closed quarter's fees: invoiced amounts plus estimates for the rest.
+      loadFeesData(supabase, user.id, feeQuarter),
       // "Nuevos (YTD)" scopes the same way as the totals below — every client/prospect
       // visible to this advisor (including shared demo rows), just filtered by created_at.
       supabase
@@ -157,7 +160,15 @@ export default async function OficinaPage() {
           </div>
         </div>
         <div className="rounded-[10px] border border-(--line) bg-(--panel) p-5">
-          <MetricRow label="Comisiones del trimestre" value={fmtUSD(demoMetrics?.comisiones_q ?? null)} />
+          <MetricRow
+            label={
+              <Link href="/oficina/honorarios" className="underline decoration-dotted hover:text-(--paper)">
+                Honorarios {quarterLabel(feeQuarter)}
+                {fees.sinConfigurar === fees.rows.length ? " (configurar →)" : ""}
+              </Link>
+            }
+            value={fees.sinConfigurar === fees.rows.length ? "—" : fmtUSD(fees.total)}
+          />
           <MetricRow label="Flujo neto" value={fmtUSD(flujoNetoValue)} cls={flujoCls} />
           <MetricRow label="Costos YTD de clientes" value={hasCostos ? fmtUSD(costosYtd) : "—"} />
           <MetricRow label="Clientes totales" value={String(clients.length)} />
@@ -247,7 +258,7 @@ export default async function OficinaPage() {
   );
 }
 
-function MetricRow({ label, value, cls }: { label: string; value: string; cls?: string }) {
+function MetricRow({ label, value, cls }: { label: React.ReactNode; value: string; cls?: string }) {
   const color = cls === "pos" ? "var(--teal)" : cls === "neg" ? "var(--brick)" : "var(--paper)";
   return (
     <div className="row-hover flex items-center justify-between border-t border-(--line) py-2.5 first:border-t-0 first:pt-0">
