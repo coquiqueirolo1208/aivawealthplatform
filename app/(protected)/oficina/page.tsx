@@ -9,6 +9,7 @@ import {
   aggregateAllocation,
   aggregateTopHoldings,
   clientTrailing12m,
+  computeCostsYTD,
   computeOfficeAumSeries,
   computeUpcomingBirthdays,
   latestMonth,
@@ -66,6 +67,8 @@ export default async function OficinaPage() {
   let hasBaseline = false;
   let flujoNeto = 0;
   let hasFlujo = false;
+  let costosYtd = 0;
+  let hasCostos = false;
   clients.forEach((c) =>
     c.accounts.forEach((a) => {
       const baseSnap = a.snapshots[baselineMonth];
@@ -80,6 +83,11 @@ export default async function OficinaPage() {
       if (typeof flujosYTD === "number") {
         flujoNeto += flujosYTD;
         hasFlujo = true;
+      }
+      const costs = lm && lm.startsWith(currentYear) ? computeCostsYTD(a.snapshots, lm).value : null;
+      if (costs != null) {
+        costosYtd += costs;
+        hasCostos = true;
       }
     }),
   );
@@ -151,6 +159,7 @@ export default async function OficinaPage() {
         <div className="rounded-[10px] border border-(--line) bg-(--panel) p-5">
           <MetricRow label="Comisiones del trimestre" value={fmtUSD(demoMetrics?.comisiones_q ?? null)} />
           <MetricRow label="Flujo neto" value={fmtUSD(flujoNetoValue)} cls={flujoCls} />
+          <MetricRow label="Costos YTD de clientes" value={hasCostos ? fmtUSD(costosYtd) : "—"} />
           <MetricRow label="Clientes totales" value={String(clients.length)} />
           <MetricRow label="Clientes nuevos (YTD)" value={String(newClientsYtd ?? 0)} />
           <MetricRow label="Prospectos nuevos (YTD)" value={String(newProspectsYtd ?? 0)} />

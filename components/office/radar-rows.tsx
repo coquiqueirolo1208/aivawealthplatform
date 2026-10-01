@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { RadarData } from "@/lib/finance/radar";
 import type { PendingTask } from "@/lib/queries/tasks";
 import { markTaskDone } from "@/lib/actions/tasks";
+import { addNote } from "@/lib/actions/notes";
 import { fmtDate, fmtUSD } from "@/lib/format";
 import { SubmitButton } from "@/components/ui/submit-button";
 
@@ -115,7 +116,16 @@ export function ContactoRow({ c }: { c: RadarData["contactoPendiente"][number] }
       <span>
         <ClientLink clientId={c.clientId} clientName={c.clientName} />
       </span>
-      <span className="text-[11px] text-(--muted)">sin contacto hace {c.daysSince} días</span>
+      <span className="flex items-center gap-2">
+        <span className="text-[11px] text-(--muted)">sin contacto hace {c.daysSince} días</span>
+        {/* One click logs a note (which resets the 90-day clock); it can be edited from the client's bitácora. */}
+        <form action={addNote.bind(null, c.clientId)}>
+          <input type="hidden" name="texto" value="Contacto registrado (desde el Radar)" />
+          <SubmitButton className="secondary px-2 py-0.5 text-[10.5px]" pendingText="Registrando…">
+            Registrar contacto
+          </SubmitButton>
+        </form>
+      </span>
     </div>
   );
 }

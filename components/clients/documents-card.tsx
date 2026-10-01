@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { addDocument, deleteDocument } from "@/lib/actions/documents";
+import { addDocument, deleteDocument, updateDocument } from "@/lib/actions/documents";
 import { docStatusInfo } from "@/lib/documents";
 import { fmtDate } from "@/lib/format";
 import { SubmitButton } from "@/components/ui/submit-button";
@@ -18,6 +18,7 @@ export interface ClientDocument {
 export function DocumentsCard({ clientId, documents }: { clientId: string; documents: ClientDocument[] }) {
   const [adding, setAdding] = useState(false);
   const confirm = useArmedConfirm<string>();
+  const [editingId, setEditingId] = useState<string | null>(null);
   const sorted = [...documents].sort((a, b) => (a.vencimiento ?? "9999").localeCompare(b.vencimiento ?? "9999"));
 
   return (
@@ -29,12 +30,41 @@ export function DocumentsCard({ clientId, documents }: { clientId: string; docum
         sorted.map((d) => {
           const status = docStatusInfo(d);
           const color = status.label === "Vigente" ? "var(--teal)" : status.label === "Vencido" ? "var(--brick)" : "var(--brass)";
+          if (editingId === d.id) {
+            return (
+              <form
+                key={d.id}
+                action={async (fd) => {
+                  await updateDocument(clientId, d.id, fd);
+                  setEditingId(null);
+                }}
+                className="mb-1.5 flex flex-wrap items-center gap-1.5 rounded-lg px-3.5 py-2.5 text-[12px]"
+                style={{ background: "var(--panel-2)", border: "1px solid var(--line)" }}
+              >
+                <span className="text-(--paper)">{d.tipo}</span>
+                <select name="estado" defaultValue={d.estado} className="text-[11.5px]">
+                  <option value="pendiente">Pendiente</option>
+                  <option value="vigente">Vigente</option>
+                </select>
+                <input type="date" name="vencimiento" defaultValue={d.vencimiento ?? ""} className="text-[11.5px]" />
+                <SubmitButton className="px-2 py-1 text-[11px]">Guardar</SubmitButton>
+                <button type="button" className="secondary px-2 py-1 text-[11px]" onClick={() => setEditingId(null)}>
+                  ✕
+                </button>
+              </form>
+            );
+          }
           return (
             <div key={d.id} className="mb-1.5 flex items-center justify-between rounded-lg px-3.5 py-2.5 text-[12.5px]" style={{ background: "var(--panel-2)", border: "1px solid var(--line)" }}>
-              <span className="text-(--paper)">
+              <button
+                type="button"
+                className="bg-transparent p-0 text-left text-(--paper)"
+                title="Cambiar estado o vencimiento"
+                onClick={() => setEditingId(d.id)}
+              >
                 {d.tipo}
                 {d.vencimiento && <span className="ml-1.5 font-mono text-[11px] text-(--muted)">({fmtDate(d.vencimiento)})</span>}
-              </span>
+              </button>
               <span className="flex items-center gap-2.5">
                 <span className="text-[11px] font-semibold uppercase" style={{ color }}>
                   {status.label}

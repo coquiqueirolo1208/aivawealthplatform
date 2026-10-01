@@ -220,3 +220,22 @@ export function countRadarAlerts(data: RadarData): number {
     data.fondeoPendiente.length
   );
 }
+
+/** Per-client version of countRadarAlerts (same categories), for badges on the client list. Prospect tasks are skipped. */
+export function countRadarAlertsByClient(data: RadarData): Map<string, number> {
+  const counts = new Map<string, number>();
+  const add = (clientId: string | null) => {
+    if (clientId) counts.set(clientId, (counts.get(clientId) ?? 0) + 1);
+  };
+  [
+    data.tareas,
+    data.documentos,
+    data.atrasos,
+    data.riesgo,
+    data.usSitusRiesgo,
+    data.todPendiente,
+    data.contactoPendiente,
+    data.fondeoPendiente,
+  ].forEach((items: Array<{ clientId: string | null }>) => items.forEach((i) => add(i.clientId)));
+  return counts;
+}

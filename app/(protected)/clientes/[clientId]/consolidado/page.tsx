@@ -9,6 +9,7 @@ import {
   aggregateAllocation,
   buildAssetTable,
   buildPositionChanges,
+  computeCostsYTD,
   computeMTD,
   computePMTargetWeights,
   computeTodPendienteAccounts,
@@ -32,6 +33,7 @@ import { ExportPdfButton } from "@/components/clients/export-pdf-button";
 import { getTasksForClient } from "@/lib/queries/tasks";
 import { getNotesForClient } from "@/lib/queries/notes";
 import { NotesCard } from "@/components/clients/notes-card";
+import { PersonalDataCard } from "@/components/clients/personal-data-card";
 
 function buildEvolutionSeries(accounts: AccountWithSnapshots[]): EvolutionSeries[] {
   const allMonths = Array.from(new Set(accounts.flatMap((a) => Object.keys(a.snapshots)))).sort();
@@ -64,8 +66,17 @@ export default async function ConsolidadoPage({ params }: { params: Promise<{ cl
 
   // Everything here depends only on clientId, so it all loads in one parallel round
   // (it used to be ~9 awaits in sequence, after loading every client's history).
-  const [client, logoUrl, benchmarkLevels, benchmarkWeights, { data: documents }, tasks, notes, { data: riskProfileRow }] =
-    await Promise.all([
+  const [
+    client,
+    logoUrl,
+    benchmarkLevels,
+    benchmarkWeights,
+    { data: documents },
+    tasks,
+    notes,
+    { data: riskProfileRow },
+    { data: personalData },
+  ] = await Promise.all([
       getClientWithSnapshots(supabase, clientId),
       getAdvisorLogoUrl(supabase, user.id),
       getBenchmarkLevels(supabase),
@@ -74,6 +85,7 @@ export default async function ConsolidadoPage({ params }: { params: Promise<{ cl
       getTasksForClient(supabase, clientId),
       getNotesForClient(supabase, clientId),
       supabase.from("risk_profiles").select("*").eq("client_id", clientId).maybeSingle(),
+      supabase.from("clients").select("name, email, celular, direccion, pareja, hijos").eq("id", clientId).maybeSingle(),
     ]);
   if (!client) redirect("/clientes");
 
@@ -109,6 +121,12 @@ export default async function ConsolidadoPage({ params }: { params: Promise<{ cl
   const y1Blend = withY1.length
     ? withY1.reduce((s, r) => s + r.value * r.weight, 0) / withY1.reduce((s, r) => s + r.weight, 0)
     : null;
+
+  // Costs only showed on each account's own page; summed here per account and in total.
+  const costsByAccount = new Map(withData.map((x) => [x.account.id, computeCostsYTD(x.account.snapshots, x.month)]));
+  const costsWithValue = [...costsByAccount.values()].filter((c) => c.value != null);
+  const costsYtdTotal = costsWithValue.length ? costsWithValue.reduce((s, c) => s + c.value!, 0) : null;
+  const costsComplete = costsWithValue.length === withData.length && costsWithValue.every((c) => c.complete);
 
   const totals = aggregateAllocation(withData.map((x) => x.snap!));
   const assetTable = buildAssetTable(accs.map((a) => ({ account: a, snapshots: a.snapshots })));
@@ -263,6 +281,19 @@ export default async function ConsolidadoPage({ params }: { params: Promise<{ cl
                 value={fmtPct(y1Blend)}
                 cls={pctClass(y1Blend)}
               />
+              <MetricRow
+                label={
+                  <>
+                    Costos YTD{" "}
+                    <HelpTooltip text="Comisiones y gastos cobrados en el año, sumando los costos de cada estado de cuenta mensual. ≈ indica que a alguna cuenta le falta algún mes." />
+                  </>
+                }
+                value={
+                  costsYtdTotal == null
+                    ? "—"
+                    : `${costsComplete ? "" : "≈ "}${fmtUSD(costsYtdTotal)}${total ? ` (${((costsYtdTotal / total) * 100).toFixed(2)}%)` : ""}`
+                }
+              />
               <MetricRow label="Cuentas" value={String(accs.length)} />
             </div>
           </div>
@@ -290,6 +321,7 @@ export default async function ConsolidadoPage({ params }: { params: Promise<{ cl
                     <th className="text-right">MTD</th>
                     <th className="text-right">YTD</th>
                     <th className="text-right">1A</th>
+                    <th className="text-right">Costos YTD</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -297,6 +329,7 @@ export default async function ConsolidadoPage({ params }: { params: Promise<{ cl
                     const mtd = computeMTD(x.snap);
                     const ytd = computeYTD(x.account.snapshots, x.month, x.snap);
                     const y1 = accountTrailing12m(x.account.snapshots, x.month);
+                    const costs = costsByAccount.get(x.account.id);
                     return (
                       <tr key={x.account.id} className="border-t border-(--line)">
                         <td className="py-2 text-(--paper)">{x.account.label}</td>
@@ -312,6 +345,9 @@ export default async function ConsolidadoPage({ params }: { params: Promise<{ cl
                         </td>
                         <td className={`text-right font-mono ${pctClass(y1?.value ?? null) === "pos" ? "text-(--teal)" : pctClass(y1?.value ?? null) === "neg" ? "text-(--brick)" : "text-(--paper-dim)"}`}>
                           {fmtPct(y1?.value ?? null)}
+                        </td>
+                        <td className="text-right font-mono text-(--paper-dim)">
+                          {costs?.value == null ? "—" : `${costs.complete ? "" : "≈ "}${fmtUSD(costs.value)}`}
                         </td>
                       </tr>
                     );
@@ -397,7 +433,8 @@ export default async function ConsolidadoPage({ params }: { params: Promise<{ cl
         />
       </div>
 
-      <div className="mt-4">
+      <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-[1fr_2fr]">
+        {personalData && <PersonalDataCard clientId={clientId} data={personalData} />}
         <NotesCard clientId={clientId} notes={notes} />
       </div>
 

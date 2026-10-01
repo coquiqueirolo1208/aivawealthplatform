@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { addNote, deleteNote } from "@/lib/actions/notes";
+import { addNote, deleteNote, updateNote } from "@/lib/actions/notes";
 import type { ClientNote } from "@/lib/queries/notes";
 import { fmtDateTime } from "@/lib/format";
 import { SubmitButton } from "@/components/ui/submit-button";
@@ -10,6 +10,7 @@ import { useArmedConfirm } from "@/components/ui/use-armed-confirm";
 export function NotesCard({ clientId, notes }: { clientId: string; notes: ClientNote[] }) {
   const [adding, setAdding] = useState(false);
   const confirm = useArmedConfirm<string>();
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   return (
     <div className="rounded-[10px] border border-(--line) bg-(--panel) p-5">
@@ -62,7 +63,32 @@ export function NotesCard({ clientId, notes }: { clientId: string; notes: Client
                 </button>
               )}
             </div>
-            <div className="text-(--paper)">{n.texto}</div>
+            {editingId === n.id ? (
+              <form
+                action={async (fd) => {
+                  await updateNote(clientId, n.id, fd);
+                  setEditingId(null);
+                }}
+                className="flex flex-col gap-1.5"
+              >
+                <textarea name="texto" defaultValue={n.texto} required autoFocus rows={2} />
+                <div className="flex gap-1.5">
+                  <SubmitButton className="px-2.5 py-1 text-[11px]">Guardar</SubmitButton>
+                  <button type="button" className="secondary px-2.5 py-1 text-[11px]" onClick={() => setEditingId(null)}>
+                    Cancelar
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <button
+                type="button"
+                className="w-full bg-transparent p-0 text-left whitespace-pre-wrap text-(--paper)"
+                title="Editar nota"
+                onClick={() => setEditingId(n.id)}
+              >
+                {n.texto}
+              </button>
+            )}
           </div>
         ))
       )}

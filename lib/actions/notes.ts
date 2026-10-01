@@ -13,20 +13,34 @@ async function requireSupabase() {
   return supabase;
 }
 
+/** Notes reset the Radar's 90-day "sin contacto" clock, so every note change revalidates it. */
+function revalidateNotePaths(clientId: string) {
+  revalidatePath(`/clientes/${clientId}/consolidado`);
+  revalidatePath("/oficina");
+  revalidatePath("/oficina/radar/contacto");
+}
+
 export async function addNote(clientId: string, formData: FormData) {
   const texto = String(formData.get("texto") ?? "").trim();
   if (!texto) return;
   const supabase = await requireSupabase();
   const { error } = await supabase.from("client_notes").insert({ client_id: clientId, texto });
   if (error) throw error;
-  revalidatePath(`/clientes/${clientId}/consolidado`);
-  revalidatePath("/oficina");
+  revalidateNotePaths(clientId);
+}
+
+export async function updateNote(clientId: string, noteId: string, formData: FormData) {
+  const texto = String(formData.get("texto") ?? "").trim();
+  if (!texto) return;
+  const supabase = await requireSupabase();
+  const { error } = await supabase.from("client_notes").update({ texto }).eq("id", noteId);
+  if (error) throw error;
+  revalidateNotePaths(clientId);
 }
 
 export async function deleteNote(clientId: string, noteId: string) {
   const supabase = await requireSupabase();
   const { error } = await supabase.from("client_notes").delete().eq("id", noteId);
   if (error) throw error;
-  revalidatePath(`/clientes/${clientId}/consolidado`);
-  revalidatePath("/oficina");
+  revalidateNotePaths(clientId);
 }

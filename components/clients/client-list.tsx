@@ -12,17 +12,42 @@ export interface ClientRow {
   id: string;
   name: string;
   aum: number | null;
-  nCustodios: number;
+  /** Number of accounts (the old label said "custodios", but two accounts can share one). */
+  nCuentas: number;
   householdLabel: string | null;
+  /** Newest statement month across the client's accounts, YYYY-MM. */
+  lastStatement: string | null;
+  /** Radar alerts for this client, same categories as the nav badge. */
+  alerts: number;
+}
+
+type SortKey = "nombre" | "aum" | "estado" | "alertas";
+
+const SORTS: Array<[SortKey, string]> = [
+  ["nombre", "Nombre"],
+  ["aum", "AUM (mayor primero)"],
+  ["estado", "Estado de cuenta más viejo primero"],
+  ["alertas", "Más alertas primero"],
+];
+
+function compare(sort: SortKey, a: ClientRow, b: ClientRow): number {
+  if (sort === "aum") return (b.aum ?? -1) - (a.aum ?? -1);
+  // Clients with no statement at all are the most out of date.
+  if (sort === "estado") return (a.lastStatement ?? "").localeCompare(b.lastStatement ?? "");
+  if (sort === "alertas") return b.alerts - a.alerts;
+  return a.name.localeCompare(b.name, "es");
 }
 
 export function ClientList({ clients }: { clients: ClientRow[] }) {
   const [search, setSearch] = useState("");
+  const [sort, setSort] = useState<SortKey>("nombre");
   const confirm = useArmedConfirm<string>();
   const [adding, setAdding] = useState(false);
   const [pending, startTransition] = useTransition();
 
-  const filtered = clients.filter((c) => c.name.toUpperCase().includes(search.trim().toUpperCase()));
+  const filtered = clients
+    .filter((c) => c.name.toUpperCase().includes(search.trim().toUpperCase()))
+    .sort((a, b) => compare(sort, a, b) || a.name.localeCompare(b.name, "es"));
 
   const households = new Map<string, { members: ClientRow[]; totalAum: number }>();
   clients.forEach((c) => {
@@ -42,13 +67,25 @@ export function ClientList({ clients }: { clients: ClientRow[] }) {
           ⚙ Gestionar procesos de clientes ↗
         </a>
       </div>
-      <input
-        type="text"
-        placeholder="Buscar cliente por nombre…"
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        className="my-3.5 w-full"
-      />
+      <div className="my-3.5 flex flex-wrap gap-2">
+        <input
+          type="text"
+          placeholder="Buscar cliente por nombre…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="min-w-[200px] flex-1"
+        />
+        <label className="flex items-center gap-1.5 text-[12px] text-(--muted)">
+          Ordenar por
+          <select value={sort} onChange={(e) => setSort(e.target.value as SortKey)}>
+            {SORTS.map(([key, label]) => (
+              <option key={key} value={key}>
+                {label}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
 
       {multiHouseholds.length > 0 && (
         <div className="mb-3 flex flex-col gap-1.5">
@@ -80,10 +117,20 @@ export function ClientList({ clients }: { clients: ClientRow[] }) {
                   {c.name}
                 </Link>
                 {c.householdLabel && <span className="ml-1.5 text-[10.5px] text-(--muted)">👪 {c.householdLabel}</span>}
+                {c.alerts > 0 && (
+                  <span
+                    className="ml-2 rounded-full px-1.5 py-0.5 font-mono text-[10px] font-bold"
+                    style={{ background: "var(--brick)", color: "#fff" }}
+                    title={`${c.alerts} ${c.alerts === 1 ? "alerta" : "alertas"} en el Radar`}
+                  >
+                    {c.alerts}
+                  </span>
+                )}
               </span>
               <span className="flex items-center gap-3.5">
                 <span className="font-mono text-[11.5px] text-(--muted)">
-                  {c.aum != null ? fmtUSD(c.aum) : "—"} · {c.nCustodios === 1 ? "1 custodio" : `${c.nCustodios} custodios`}
+                  {c.aum != null ? fmtUSD(c.aum) : "—"} · {c.nCuentas === 1 ? "1 cuenta" : `${c.nCuentas} cuentas`} · último{" "}
+                  {c.lastStatement ?? "—"}
                 </span>
                 {confirm.armed === c.id ? (
                   <button

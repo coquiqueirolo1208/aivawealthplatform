@@ -38,7 +38,7 @@ export default async function HomePage() {
   ]);
 
   const steps = [
-    { done: !!logoUrl, label: "Subí el logo de tu oficina", href: "/clientes", cta: "Subir logo" },
+    { done: !!logoUrl, label: "Subí el logo de tu oficina", href: "/configuracion", cta: "Subir logo" },
     { done: (prospectCount.count ?? 0) > 0, label: "Agregá tu primer prospecto", href: "/prospectos", cta: "Agregar prospecto" },
     { done: (clientCount.count ?? 0) > 0, label: "Cargá tu primer cliente", href: "/clientes", cta: "Agregar cliente" },
   ];

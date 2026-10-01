@@ -46,6 +46,25 @@ export async function updateClientBirthday(clientId: string, fechaNacimiento: st
   revalidatePath("/oficina");
 }
 
+/** Contact and family details (the columns existed from the original schema but had no UI). Also renames the client. */
+export async function updateClientPersonalData(clientId: string, formData: FormData): Promise<{ error: string | null }> {
+  const text = (key: string) => String(formData.get(key) ?? "").trim() || null;
+  const name = text("name");
+  if (!name) return { error: "El nombre no puede quedar vacío." };
+  const email = text("email");
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: "El email no parece válido." };
+
+  const { supabase } = await requireAdvisorId();
+  const { error } = await supabase
+    .from("clients")
+    .update({ name, email, celular: text("celular"), direccion: text("direccion"), pareja: text("pareja"), hijos: text("hijos") })
+    .eq("id", clientId);
+  if (error) throw error;
+  revalidatePath(`/clientes/${clientId}`, "layout");
+  revalidatePath("/clientes");
+  return { error: null };
+}
+
 /** Free-text label linking separate client records (e.g. spouses) into one household for AUM roll-ups. */
 export async function updateClientHousehold(clientId: string, householdLabel: string) {
   const { supabase } = await requireAdvisorId();

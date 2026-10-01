@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildRadarData, countRadarAlerts, type RadarClientInput } from "./radar";
+import { buildRadarData, countRadarAlerts, countRadarAlertsByClient, type RadarClientInput } from "./radar";
 import type { ModelPortfolio, Snapshot } from "./types";
 import type { AccountWithSnapshots } from "@/lib/queries/portfolio";
 
@@ -263,5 +263,22 @@ describe("countRadarAlerts", () => {
   it("is zero when every category is empty", () => {
     const data = buildRadarData([baseClient()], new Map(), "2026-06-01");
     expect(countRadarAlerts(data)).toBe(0);
+  });
+});
+
+describe("countRadarAlertsByClient", () => {
+  it("splits the same total per client and ignores prospect tasks", () => {
+    const noisy = baseClient({
+      id: "c1",
+      tasks: [{ title: "T", due: "2026-01-01", done: false }],
+      documents: [{ tipo: "KYC", estado: "pendiente", vencimiento: null }],
+    });
+    const quiet = baseClient({ id: "c2", name: "Client Two" });
+    const prospect = { id: "p1", name: "Prospecto", tasks: [{ title: "Llamar", due: "2026-01-01", done: false }] };
+    const data = buildRadarData([noisy, quiet], new Map(), "2026-06-01", [prospect]);
+    const byClient = countRadarAlertsByClient(data);
+    expect(byClient.get("c1")).toBe(2);
+    expect(byClient.has("c2")).toBe(false);
+    expect(countRadarAlerts(data)).toBe(3); // the prospect's overdue task counts in the total only
   });
 });

@@ -1,7 +1,21 @@
+import { fmtDate } from "@/lib/format";
+
+/** One count per Radar category — the email used to cover only the first four. */
+export interface WeeklyRadarCounts {
+  tareasVencidas: number;
+  documentosPendientes: number;
+  atrasos: number;
+  riesgo: number;
+  usSitus: number;
+  todPendiente: number;
+  sinContacto: number;
+  fondeoPendiente: number;
+}
+
 export interface WeeklySummaryData {
   advisorName: string;
   weekLabel: string;
-  radar: { tareasVencidas: number; documentosPendientes: number; atrasos: number; riesgo: number };
+  radar: WeeklyRadarCounts;
   upcomingTasks: Array<{ clientName: string; title: string; due: string }>;
   upcomingBirthdays: Array<{ clientName: string; daysUntil: number }>;
   appUrl: string;
@@ -21,8 +35,12 @@ export function buildWeeklySummaryHtml(data: WeeklySummaryData): string {
     ["Documentación pendiente / vencida", radar.documentosPendientes],
     ["Estados de cuenta atrasados", radar.atrasos],
     ["Desvíos de perfil de riesgo", radar.riesgo],
+    ["Riesgo de US state tax (>$60k)", radar.usSitus],
+    ["Transfer on Death pendiente", radar.todPendiente],
+    ["Clientes sin contacto reciente", radar.sinContacto],
+    ["Fondeo pendiente", radar.fondeoPendiente],
   ] as const;
-  const radarTotal = radar.tareasVencidas + radar.documentosPendientes + radar.atrasos + radar.riesgo;
+  const radarTotal = radarRows.reduce((s, [, n]) => s + n, 0);
 
   const radarHtml = radarTotal === 0
     ? `<p style="color:#3a6b52;">Todo en orden — sin alertas pendientes en el Radar. 🎉</p>`
@@ -40,7 +58,7 @@ export function buildWeeklySummaryHtml(data: WeeklySummaryData): string {
     ? `<p style="color:#666; font-size:13px;">Sin tareas con vencimiento esta semana.</p>`
     : `<ul style="padding-left:18px; margin:0; font-size:13px;">
         ${data.upcomingTasks
-          .map((t) => `<li style="margin-bottom:4px;"><strong>${escapeHtml(t.clientName)}</strong> — ${escapeHtml(t.title)} (vence ${t.due})</li>`)
+          .map((t) => `<li style="margin-bottom:4px;"><strong>${escapeHtml(t.clientName)}</strong> — ${escapeHtml(t.title)} (vence ${fmtDate(t.due)})</li>`)
           .join("")}
       </ul>`;
 
