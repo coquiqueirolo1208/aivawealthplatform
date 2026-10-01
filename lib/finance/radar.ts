@@ -2,7 +2,7 @@
 // Pure function over already-fetched data — the DB fetch (per-advisor, across every
 // client) lives in lib/queries/radar.ts. The original scans a KV store client-by-client
 // (N+1); here the caller does that fan-out with a handful of flat queries instead.
-import { aggregateAllocation, monthDiff, normalizeName } from "./core";
+import { aggregateAllocation, monthDiff, normalizeName, prevMonthKey } from "./core";
 import { computePMTargetWeights } from "./investec";
 import { computeTodPendienteAccounts, computeUsSitusExposure } from "./us-situs";
 import { computeStaleContacts } from "./contact";
@@ -47,6 +47,17 @@ export interface RadarData {
   fondeoPendiente: Array<{ clientId: string; clientName: string; accountId: string; account: string; monto: number }>;
 }
 
+// A month's statement usually lands during the first two weeks of the next month.
+// Flagging against "two months before today" (the old rule) marked every up-to-date
+// account as late on the 1st of each month.
+const STATEMENT_GRACE_DAY = 15;
+
+/** Newest statement month an up-to-date account should have by `todayIso`. */
+export function expectedLatestStatementMonth(todayIso: string): string {
+  const lastClosedMonth = prevMonthKey(todayIso.slice(0, 7));
+  return Number(todayIso.slice(8, 10)) >= STATEMENT_GRACE_DAY ? lastClosedMonth : prevMonthKey(lastClosedMonth);
+}
+
 export function buildRadarData(
   clients: RadarClientInput[],
   modelPortfolios: Map<string, ModelPortfolio | null>,
@@ -64,7 +75,7 @@ export function buildRadarData(
     contactoPendiente: [],
     fondeoPendiente: [],
   };
-  const todayMonth = todayIso.slice(0, 7);
+  const expectedMonth = expectedLatestStatementMonth(todayIso);
 
   for (const client of clients) {
     client.documents.forEach((d) => {
@@ -104,11 +115,14 @@ export function buildRadarData(
       const months = Object.keys(a.snapshots).sort();
       const lm = months.length ? months[months.length - 1] : null;
       if (!lm) {
+        // An approved account still waiting on the client's transfer has no statement
+        // yet by definition — it's already listed under fondeoPendiente.
+        if (a.montoPendienteTransferir && a.montoPendienteTransferir > 0) return;
         all.atrasos.push({ clientId: client.id, clientName: client.name, accountId: a.id, account: a.label, situacion: "sin_datos" });
       } else {
-        const lag = monthDiff(lm, todayMonth);
-        if (lag >= 2) {
-          all.atrasos.push({ clientId: client.id, clientName: client.name, accountId: a.id, account: a.label, situacion: "atrasado", ultimoMes: lm, mesesAtraso: lag });
+        const mesesAtraso = monthDiff(lm, expectedMonth);
+        if (mesesAtraso >= 1) {
+          all.atrasos.push({ clientId: client.id, clientName: client.name, accountId: a.id, account: a.label, situacion: "atrasado", ultimoMes: lm, mesesAtraso });
         }
       }
     });

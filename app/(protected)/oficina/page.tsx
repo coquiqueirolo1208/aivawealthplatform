@@ -20,6 +20,7 @@ import { fmtPct, fmtUSD, pctClass } from "@/lib/format";
 import { AllocationDoughnut } from "@/components/charts/allocation-doughnut";
 import { EvolutionLine } from "@/components/charts/evolution-line";
 import { PendingTaskRow } from "@/components/office/radar-rows";
+import { currentMonthIso, todayIso } from "@/lib/dates";
 
 const MAX_UPCOMING_TASKS = 5;
 
@@ -42,7 +43,9 @@ export default async function OficinaPage() {
   // snapshots (no more manually-entered office metrics to keep in sync).
   const aumTotal = clients.reduce((s, c) => s + (clientTrailing12m(c.accounts).aum ?? 0), 0);
 
-  const baselineMonth = new Date().getFullYear() - 1 + "-12";
+  const currentYYYYMM = currentMonthIso();
+  const currentYear = currentYYYYMM.slice(0, 4);
+  const baselineMonth = `${Number(currentYear) - 1}-12`;
   let aumInicioAno = 0;
   let hasBaseline = false;
   let flujoNeto = 0;
@@ -55,7 +58,9 @@ export default async function OficinaPage() {
         hasBaseline = true;
       }
       const lm = latestMonth(a.snapshots);
-      const flujosYTD = lm ? a.snapshots[lm].flujosNetosYTD : null;
+      // An account whose latest statement is from a prior year would otherwise add
+      // that year's YTD flows into this year's office net flow.
+      const flujosYTD = lm && lm.startsWith(currentYear) ? a.snapshots[lm].flujosNetosYTD : null;
       if (typeof flujosYTD === "number") {
         flujoNeto += flujosYTD;
         hasFlujo = true;
@@ -79,7 +84,6 @@ export default async function OficinaPage() {
     5,
   );
 
-  const currentYYYYMM = new Date().toISOString().slice(0, 7);
   const perAccountSparse = clients.flatMap((c) =>
     c.accounts.map((a) => {
       const sparse: Record<string, number> = {};
@@ -91,7 +95,7 @@ export default async function OficinaPage() {
   );
   const aumSeries = computeOfficeAumSeries(
     perAccountSparse,
-    monthsInRange(new Date().getFullYear() + "-01", currentYYYYMM),
+    monthsInRange(`${currentYear}-01`, currentYYYYMM),
     "monthly",
   );
 
@@ -105,7 +109,7 @@ export default async function OficinaPage() {
 
   // "Nuevos (YTD)" scopes the same way as the totals above — every client/prospect
   // visible to this advisor (including shared demo rows), just filtered by created_at.
-  const yearStartIso = new Date().getFullYear() + "-01-01";
+  const yearStartIso = `${currentYear}-01-01`;
   const [{ count: newClientsYtd }, { count: newProspectsYtd }] = await Promise.all([
     supabase
       .from("clients")
@@ -124,14 +128,14 @@ export default async function OficinaPage() {
 
   // Overdue tasks are already covered by Radar's "Tareas vencidas" — this list only
   // needs the ones still ahead, so the two sections don't repeat the same items.
-  const todayIso = new Date().toISOString().slice(0, 10);
-  const upcomingTasks = (await getPendingTasksForAdvisor(supabase, user.id)).filter((t) => !t.due || t.due >= todayIso);
+  const today = todayIso();
+  const upcomingTasks = (await getPendingTasksForAdvisor(supabase, user.id)).filter((t) => !t.due || t.due >= today);
   const radarData = await loadRadarData(supabase, user.id);
 
   const clientBirthdays = await getClientBirthdays(supabase, user.id);
   const upcomingBirthdays = computeUpcomingBirthdays(
     clientBirthdays.map((c) => ({ id: c.id, name: c.name, fechaNacimiento: c.fechaNacimiento })),
-    todayIso,
+    today,
     5,
   );
 

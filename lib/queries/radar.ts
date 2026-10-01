@@ -4,6 +4,7 @@ import { getAdvisorClientsWithSnapshots } from "./portfolio";
 import { getModelPortfolio } from "./reference";
 import { buildRadarData, type RadarClientInput, type RadarData, type RadarProspectInput } from "@/lib/finance/radar";
 import { toUsdSnapshotsByMonth } from "@/lib/finance/currency";
+import { todayIso } from "@/lib/dates";
 
 export async function loadRadarData(supabase: SupabaseClient<Database>, advisorId: string): Promise<RadarData> {
   const [clients, { data: prospects }] = await Promise.all([
@@ -91,5 +92,5 @@ export async function loadRadarData(supabase: SupabaseClient<Database>, advisorI
     tasks: tasksByProspect.get(p.id) ?? [],
   }));
 
-  return buildRadarData(input, modelPortfolios, new Date().toISOString().slice(0, 10), prospectInput);
+  return buildRadarData(input, modelPortfolios, todayIso(), prospectInput);
 }

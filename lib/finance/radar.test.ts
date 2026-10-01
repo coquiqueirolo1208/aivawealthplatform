@@ -70,7 +70,7 @@ describe("buildRadarData", () => {
     expect(data.documentos[0].estado).toBe("Pendiente");
   });
 
-  it("flags an account with no snapshots as sin_datos, and one lagging >=2 months as atrasado", () => {
+  it("flags an account with no snapshots as sin_datos, and one behind the expected statement month as atrasado", () => {
     const client = baseClient({
       accounts: [
         acc({ id: "a1", label: "No Data" }),
@@ -78,12 +78,29 @@ describe("buildRadarData", () => {
         acc({ id: "a3", label: "Current", snapshots: { "2026-05": snap({ valorActual: 100 }) } }),
       ],
     });
+    // June 1st: May's statement isn't out yet, so April is the newest one expected.
     const data = buildRadarData([client], new Map(), "2026-06-01");
     expect(data.atrasos).toHaveLength(2);
     expect(data.atrasos.find((a) => a.account === "No Data")?.situacion).toBe("sin_datos");
     const lagging = data.atrasos.find((a) => a.account === "Lagging");
     expect(lagging?.situacion).toBe("atrasado");
-    expect(lagging?.mesesAtraso).toBe(3);
+    expect(lagging?.mesesAtraso).toBe(1);
+  });
+
+  it("gives statements until the 15th of the following month before flagging them late", () => {
+    const client = baseClient({ accounts: [acc({ id: "a1", label: "Up to date", snapshots: { "2026-08": snap({ valorActual: 100 }) } })] });
+    expect(buildRadarData([client], new Map(), "2026-10-01").atrasos).toHaveLength(0);
+    expect(buildRadarData([client], new Map(), "2026-10-14").atrasos).toHaveLength(0);
+    const late = buildRadarData([client], new Map(), "2026-10-15").atrasos;
+    expect(late).toHaveLength(1);
+    expect(late[0].mesesAtraso).toBe(1);
+  });
+
+  it("does not flag an account awaiting the client's transfer as missing statements", () => {
+    const client = baseClient({ accounts: [acc({ id: "a1", label: "Recién aprobada", montoPendienteTransferir: 50000 })] });
+    const data = buildRadarData([client], new Map(), "2026-06-20");
+    expect(data.atrasos).toHaveLength(0);
+    expect(data.fondeoPendiente).toHaveLength(1);
   });
 
   it("flags a >=12% concentration relative to that client's own total", () => {

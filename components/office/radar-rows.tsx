@@ -55,7 +55,7 @@ export function AtrasoRow({ a }: { a: RadarData["atrasos"][number] }) {
         </Link>
       </span>
       <span className="text-[11px] text-(--muted)">
-        {a.situacion === "sin_datos" ? "sin ningún estado de cuenta cargado" : `último cargado: ${a.ultimoMes} — ${a.mesesAtraso} meses de atraso`}
+        {a.situacion === "sin_datos" ? "sin ningún estado de cuenta cargado" : `último cargado: ${a.ultimoMes} — ${a.mesesAtraso} ${a.mesesAtraso === 1 ? "mes" : "meses"} de atraso`}
       </span>
     </div>
   );

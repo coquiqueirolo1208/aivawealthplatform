@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getPendingTasksForAdvisor } from "@/lib/queries/tasks";
 import { SearchableSectionList } from "@/components/office/searchable-section-list";
+import { todayIso } from "@/lib/dates";
 
 export default async function TareasPendientesPage() {
   const supabase = await createClient();
@@ -13,8 +14,8 @@ export default async function TareasPendientesPage() {
 
   // Same "not overdue" filter as the capped list on Mi Oficina — overdue tasks
   // live in Radar's "Tareas vencidas" instead.
-  const todayIso = new Date().toISOString().slice(0, 10);
-  const upcomingTasks = (await getPendingTasksForAdvisor(supabase, user.id)).filter((t) => !t.due || t.due >= todayIso);
+  const today = todayIso();
+  const upcomingTasks = (await getPendingTasksForAdvisor(supabase, user.id)).filter((t) => !t.due || t.due >= today);
 
   return (
     <div>
