@@ -3,7 +3,6 @@ import { requireUser } from "@/lib/supabase/server";
 import { getClientWithSnapshots, type AccountWithSnapshots } from "@/lib/queries/portfolio";
 import { getFunds, getModelPortfolio } from "@/lib/queries/reference";
 import { getBenchmarkLevels, getClientBenchmarkWeights } from "@/lib/queries/benchmark";
-import { getAdvisorLogoUrl } from "@/lib/queries/advisor";
 import {
   accountTrailing12m,
   aggregateAllocation,
@@ -30,7 +29,8 @@ import { RiskProfileCard } from "@/components/clients/risk-profile-card";
 import { TasksCard } from "@/components/clients/tasks-card";
 import { BenchmarkCard } from "@/components/clients/benchmark-card";
 import { BulkUploadCard } from "@/components/clients/bulk-upload-card";
-import { ExportPdfButton } from "@/components/clients/export-pdf-button";
+import { ClientReportButton } from "@/components/clients/client-report-button";
+import { reportableMonths } from "@/lib/reports/client-report";
 import { getTasksForClient } from "@/lib/queries/tasks";
 import { getNotesForClient } from "@/lib/queries/notes";
 import { NotesCard } from "@/components/clients/notes-card";
@@ -65,13 +65,12 @@ function buildEvolutionSeries(accounts: AccountWithSnapshots[]): EvolutionSeries
 
 export default async function ConsolidadoPage({ params }: { params: Promise<{ clientId: string }> }) {
   const { clientId } = await params;
-  const { supabase, user } = await requireUser();
+  const { supabase } = await requireUser();
 
   // Everything here depends only on clientId, so it all loads in one parallel round
   // (it used to be ~9 awaits in sequence, after loading every client's history).
   const [
     client,
-    logoUrl,
     benchmarkLevels,
     benchmarkWeights,
     { data: documents },
@@ -83,7 +82,6 @@ export default async function ConsolidadoPage({ params }: { params: Promise<{ cl
     { data: meetingPrepRow },
   ] = await Promise.all([
       getClientWithSnapshots(supabase, clientId),
-      getAdvisorLogoUrl(supabase, user.id),
       getBenchmarkLevels(supabase),
       getClientBenchmarkWeights(supabase, clientId),
       supabase.from("client_documents").select("id, tipo, estado, vencimiento, notas").eq("client_id", clientId),
@@ -223,26 +221,7 @@ export default async function ConsolidadoPage({ params }: { params: Promise<{ cl
       ) : (
         <>
           <div className="mb-2 flex justify-end">
-            <ExportPdfButton
-              data={{
-                clientName: client.name,
-                total,
-                mtdBlend,
-                ytdBlend,
-                y1Blend,
-                accounts: latestByAccount.map((x) => ({
-                  label: x.account.label,
-                  month: x.month,
-                  valor: x.snap?.valorActual ?? null,
-                  mtd: computeMTD(x.snap).value,
-                  ytd: computeYTD(x.account.snapshots, x.month, x.snap).value,
-                  y1: accountTrailing12m(x.account.snapshots, x.month)?.value ?? null,
-                })),
-                allocation: Object.entries(totals).map(([tipo, valor]) => ({ tipo, valor })),
-                positions: assetTable.map((r) => ({ name: r.name, total: r.total, mtd: r.mtd, ytd: r.ytd })),
-                logoUrl,
-              }}
-            />
+            <ClientReportButton clientId={clientId} months={reportableMonths(accs)} />
           </div>
           <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-[1.3fr_1fr]">
             <div className="card-primary p-6">
