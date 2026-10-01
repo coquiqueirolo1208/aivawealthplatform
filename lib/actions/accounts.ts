@@ -31,10 +31,17 @@ export async function deleteAccount(clientId: string, accountId: string) {
   revalidatePath(`/clientes/${clientId}`);
 }
 
-/** Manual monthly snapshot entry — the same shape a mocked/real statement extraction would produce. */
-export async function saveSnapshotManual(clientId: string, accountId: string, formData: FormData) {
+/**
+ * Manual monthly snapshot entry — the same shape a mocked/real statement extraction would produce.
+ * Expected failures are returned, not thrown: Next.js hides thrown action messages in production.
+ */
+export async function saveSnapshotManual(
+  clientId: string,
+  accountId: string,
+  formData: FormData,
+): Promise<{ error: string | null }> {
   const month = String(formData.get("month") ?? "");
-  if (!/^\d{4}-\d{2}$/.test(month)) return;
+  if (!/^\d{4}-\d{2}$/.test(month)) return { error: "Elegí un mes válido." };
   const num = (key: string) => {
     const raw = formData.get(key);
     if (raw === null || raw === "") return null;
@@ -43,6 +50,9 @@ export async function saveSnapshotManual(clientId: string, accountId: string, fo
   };
   const moneda = String(formData.get("moneda") ?? "USD") || "USD";
   const tipoCambio = moneda === "USD" ? null : await fetchUsdExchangeRate(moneda, lastDayOfMonth(month));
+  if (moneda !== "USD" && !tipoCambio) {
+    return { error: `No se pudo obtener el tipo de cambio ${moneda}/USD de ${month}. Probá de nuevo en unos minutos.` };
+  }
 
   const supabase = await requireSupabase();
   const { error } = await supabase.from("snapshots").upsert(
@@ -55,11 +65,18 @@ export async function saveSnapshotManual(clientId: string, accountId: string, fo
       flujos_netos_ytd: num("flujosNetosYTD"),
       moneda,
       tipo_cambio: tipoCambio,
+      // A custodian/AI-reported return takes priority over the one computed from
+      // these values, so a hand correction would otherwise change nothing on screen.
+      rent_mtd: null,
+      rent_mtd_metodo: null,
+      rent_ytd: null,
+      rent_ytd_metodo: null,
     },
     { onConflict: "account_id,month" },
   );
   if (error) throw error;
   revalidatePath(`/clientes/${clientId}`);
+  return { error: null };
 }
 
 export async function deleteSnapshot(clientId: string, accountId: string, month: string) {

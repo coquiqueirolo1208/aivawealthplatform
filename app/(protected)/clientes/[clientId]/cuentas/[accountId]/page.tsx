@@ -213,7 +213,7 @@ export default async function AccountPage({
       ) : null}
 
       <div className="mt-4">
-        <AccountStatementUpload clientId={clientId} accountId={accountId} accountLabel={account.label} />
+        <AccountStatementUpload clientId={clientId} accountId={accountId} accountLabel={account.label} existingMonths={months} />
         <SnapshotForm
           clientId={clientId}
           accountId={accountId}

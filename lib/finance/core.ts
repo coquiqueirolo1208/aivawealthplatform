@@ -57,9 +57,11 @@ export function computeMTD(targetSnap: Snapshot | null | undefined): MetricResul
     };
   }
   const vi = targetSnap.valorInicial;
-  if (typeof vi === "number" && vi !== 0) {
+  const va = targetSnap.valorActual;
+  // A missing current value used to compute as (0 - vi) / vi ≈ -100%.
+  if (typeof vi === "number" && vi !== 0 && typeof va === "number") {
     const flows = typeof targetSnap.flujosNetos === "number" ? targetSnap.flujosNetos : 0;
-    const mtd = ((targetSnap.valorActual! - vi - flows) / vi) * 100;
+    const mtd = ((va - vi - flows) / vi) * 100;
     return { value: mtd, method: "calculado", label: "desde valor inicial del mes" };
   }
   return { value: null, method: "no_disponible", label: "" };
@@ -75,9 +77,9 @@ export function computeYTD(
   const year = targetMonth.split("-")[0];
   const baselineMonth = parseInt(year, 10) - 1 + "-12";
   const baseline = accountSnapshots[baselineMonth];
-  if (baseline && typeof baseline.valorActual === "number" && baseline.valorActual !== 0) {
+  if (baseline && typeof baseline.valorActual === "number" && baseline.valorActual !== 0 && typeof targetSnap.valorActual === "number") {
     const flowsYTD = typeof targetSnap.flujosNetosYTD === "number" ? targetSnap.flujosNetosYTD : 0;
-    const ytd = ((targetSnap.valorActual! - baseline.valorActual - flowsYTD) / baseline.valorActual) * 100;
+    const ytd = ((targetSnap.valorActual - baseline.valorActual - flowsYTD) / baseline.valorActual) * 100;
     return { value: ytd, method: "calculado", label: "base dic-" + (parseInt(year, 10) - 1) };
   }
   if (targetSnap.rentYTD !== null && targetSnap.rentYTD !== undefined) {

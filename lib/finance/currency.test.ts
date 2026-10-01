@@ -22,8 +22,8 @@ describe("toUsdValue", () => {
   it("divides by the exchange rate for a foreign currency", () => {
     expect(toUsdValue(900000, "ARS", 900)).toBe(1000);
   });
-  it("passes through if tipoCambio is missing even for a foreign currency", () => {
-    expect(toUsdValue(900000, "ARS", null)).toBe(900000);
+  it("returns null (unknown) for a foreign currency with no rate, rather than counting it as dollars", () => {
+    expect(toUsdValue(900000, "ARS", null)).toBeNull();
   });
   it("returns null for a null value", () => {
     expect(toUsdValue(null, "ARS", 900)).toBeNull();
@@ -62,9 +62,19 @@ describe("toUsdSnapshot", () => {
     expect(toUsdSnapshot(s)).toEqual(s);
   });
 
-  it("returns the snapshot unchanged when moneda is foreign but no rate was captured", () => {
-    const s = snap({ valorActual: 900000, moneda: "ARS", tipoCambio: null });
-    expect(toUsdSnapshot(s)).toEqual(s);
+  it("blanks the amounts when moneda is foreign but no rate was captured, so totals skip it", () => {
+    const s = snap({
+      valorActual: 900000,
+      holdings: [{ nombre: "Bono soberano", valor: 450000, retornoPct: 3 }],
+      moneda: "ARS",
+      tipoCambio: null,
+      rentMTD: 5,
+    });
+    const usd = toUsdSnapshot(s);
+    expect(usd.valorActual).toBeNull();
+    expect(usd.holdings).toEqual([]);
+    expect(usd.rentMTD).toBe(5);
+    expect(usd.moneda).toBe("ARS");
   });
 });
 

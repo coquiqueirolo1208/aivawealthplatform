@@ -72,6 +72,9 @@ export function matchAccountByCustodian(
   let best: CustodianMatchAccount | null = null;
   let bestScore = 0;
   for (const a of accounts) {
+    // Same custodian but a different account number on file is a different account
+    // (e.g. a client's individual vs. joint account at Pershing) — never a name match.
+    if (extractedNumber && a.accountNumber && normalizeAccountNumber(a.accountNumber) !== extractedNumber) continue;
     const score = Math.max(custodianNameScore(extracted.custodioDetectado, a.label), custodianNameScore(extracted.custodioDetectado, a.custodian));
     if (score > bestScore) {
       bestScore = score;

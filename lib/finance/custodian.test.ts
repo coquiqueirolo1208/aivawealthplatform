@@ -57,6 +57,23 @@ describe("matchAccountByCustodian", () => {
     expect(matched).toBe("a2");
   });
 
+  it("never name-matches an account whose stored number differs from the statement's", () => {
+    // A second Pershing account (e.g. joint) must not overwrite the individual one.
+    const matched = matchAccountByCustodian(
+      { numeroCuenta: "JXD-999999", custodioDetectado: "Pershing LLC (clearing) / Pro Capital (introducing firm)" },
+      accounts,
+    );
+    expect(matched).toBeNull();
+  });
+
+  it("still name-matches an account with no number on file when the statement has one", () => {
+    const matched = matchAccountByCustodian(
+      { numeroCuenta: "4017674", custodioDetectado: "Banco Santander International (Private Banking)" },
+      accounts,
+    );
+    expect(matched).toBe("a2");
+  });
+
   it("returns null (create new account) when nothing matches", () => {
     const matched = matchAccountByCustodian({ numeroCuenta: null, custodioDetectado: "Charles Schwab" }, accounts);
     expect(matched).toBeNull();

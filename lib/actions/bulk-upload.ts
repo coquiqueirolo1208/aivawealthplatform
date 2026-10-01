@@ -28,11 +28,23 @@ export interface ExtractedStatement {
   _mock?: boolean;
 }
 
-async function toSnapshotRow(accountId: string, ex: ExtractedStatement) {
+/**
+ * Expected failures (bad month, no exchange rate) come back as `{ ok: false, error }`
+ * rather than a throw: Next.js replaces thrown server-action messages with a generic
+ * one in production, so the advisor would never see why the save failed.
+ */
+export type SaveSnapshotResult = { ok: true; accountId: string } | { ok: false; error: string };
+
+async function toSnapshotFields(ex: ExtractedStatement) {
+  if (!/^\d{4}-\d{2}$/.test(ex.mes ?? "")) {
+    return { ok: false as const, error: `Mes inválido "${ex.mes}" — tiene que ser AAAA-MM.` };
+  }
   const moneda = ex.moneda || "USD";
   const tipoCambio = moneda === "USD" ? null : await fetchUsdExchangeRate(moneda, lastDayOfMonth(ex.mes));
-  return {
-    account_id: accountId,
+  if (moneda !== "USD" && !tipoCambio) {
+    return { ok: false as const, error: `No se pudo obtener el tipo de cambio ${moneda}/USD de ${ex.mes}. Probá de nuevo en unos minutos.` };
+  }
+  const fields = {
     month: ex.mes,
     valor_actual: ex.valorActual,
     valor_inicial: ex.valorInicial,
@@ -52,13 +64,20 @@ async function toSnapshotRow(accountId: string, ex: ExtractedStatement) {
     highlights: ex.highlights ?? [],
     movimientos: ex.movimientos ?? [],
   };
+  return { ok: true as const, fields };
 }
 
-export async function saveExtractedSnapshot(clientId: string, accountId: string, extraction: ExtractedStatement) {
+export async function saveExtractedSnapshot(
+  clientId: string,
+  accountId: string,
+  extraction: ExtractedStatement,
+): Promise<SaveSnapshotResult> {
+  const prepared = await toSnapshotFields(extraction);
+  if (!prepared.ok) return { ok: false, error: prepared.error };
   const supabase = await createClient();
   const { error } = await supabase
     .from("snapshots")
-    .upsert(await toSnapshotRow(accountId, extraction), { onConflict: "account_id,month" });
+    .upsert({ account_id: accountId, ...prepared.fields }, { onConflict: "account_id,month" });
   if (error) throw error;
   // Backfill the account number from this extraction if the account doesn't have
   // one yet — lets future uploads match by number instead of fuzzy custodian text.
@@ -70,13 +89,19 @@ export async function saveExtractedSnapshot(clientId: string, accountId: string,
   }
   revalidatePath(`/clientes/${clientId}/consolidado`);
   revalidatePath(`/clientes/${clientId}/cuentas/${accountId}`);
+  return { ok: true, accountId };
 }
 
 export async function createAccountAndSaveSnapshot(
   clientId: string,
   custodianName: string,
   extraction: ExtractedStatement,
-) {
+): Promise<SaveSnapshotResult> {
+  // Validate before inserting the account, so a failed exchange-rate lookup doesn't
+  // leave an empty account behind.
+  const prepared = await toSnapshotFields(extraction);
+  if (!prepared.ok) return { ok: false, error: prepared.error };
+
   const supabase = await createClient();
   const { data: account, error: accError } = await supabase
     .from("accounts")
@@ -85,10 +110,10 @@ export async function createAccountAndSaveSnapshot(
     .single();
   if (accError) throw accError;
 
-  const { error } = await supabase.from("snapshots").upsert(await toSnapshotRow(account.id, extraction), {
-    onConflict: "account_id,month",
-  });
+  const { error } = await supabase
+    .from("snapshots")
+    .upsert({ account_id: account.id, ...prepared.fields }, { onConflict: "account_id,month" });
   if (error) throw error;
   revalidatePath(`/clientes/${clientId}/consolidado`);
-  return account.id;
+  return { ok: true, accountId: account.id };
 }

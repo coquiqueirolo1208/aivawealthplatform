@@ -22,6 +22,7 @@ export function SnapshotForm({
   existing: Snapshot | null;
 }) {
   const [newMonth, setNewMonth] = useState("");
+  const [saveError, setSaveError] = useState<string | null>(null);
   const confirm = useArmedConfirm<true>();
   const router = useRouter();
   const pathname = usePathname();
@@ -63,7 +64,13 @@ export function SnapshotForm({
         )}
       </div>
 
-      <form action={(fd) => saveSnapshotManual(clientId, accountId, fd)} className="grid grid-cols-2 gap-3 md:grid-cols-4">
+      <form
+        action={async (fd) => {
+          const { error } = await saveSnapshotManual(clientId, accountId, fd);
+          setSaveError(error);
+        }}
+        className="grid grid-cols-2 gap-3 md:grid-cols-4"
+      >
         <input type="hidden" name="month" value={selectedMonth} />
         <label className="block">
           <span className="mb-1 block text-[11px] text-(--muted)">Moneda del estado de cuenta</span>
@@ -86,6 +93,7 @@ export function SnapshotForm({
               : "No se pudo obtener el tipo de cambio de ese mes — los valores no se están convirtiendo a USD en el consolidado."}
           </div>
         )}
+        {saveError && <div className="col-span-full text-[12px] text-(--brick)">{saveError}</div>}
         <div className="col-span-full flex gap-2">
           <SubmitButton disabled={!selectedMonth} pendingText="Guardando…">
             Guardar {selectedMonth || "…"}

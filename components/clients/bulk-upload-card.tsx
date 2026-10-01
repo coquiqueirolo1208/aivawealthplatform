@@ -2,20 +2,34 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { fmtCurrency } from "@/lib/format";
+import { fmtCurrency, fmtPct } from "@/lib/format";
 import { saveExtractedSnapshot, createAccountAndSaveSnapshot, type ExtractedStatement } from "@/lib/actions/bulk-upload";
-import { matchAccountByCustodian } from "@/lib/finance/custodian";
+import { matchAccountByCustodian, type CustodianMatchAccount } from "@/lib/finance/custodian";
 
 export interface BulkAccountOption {
   id: string;
   label: string;
   custodian: string | null;
   accountNumber: string | null;
+  /** Months this account already has a statement for — saving one of these replaces it. */
+  months: string[];
 }
 
+type Status = "analyzing" | "ready" | "saving" | "saved" | "error";
+
+const STATUS_LABEL: Record<Status, string> = {
+  analyzing: "analizando…",
+  ready: "listo para guardar",
+  saving: "guardando…",
+  saved: "guardado ✓",
+  error: "error",
+};
+
 interface Row {
+  // Keyed by position, not file name: two files both named "statement.pdf" collided.
+  id: number;
   fileName: string;
-  status: "pending" | "analyzing" | "ready" | "saving" | "saved" | "error";
+  status: Status;
   extraction?: ExtractedStatement & { custodioDetectado?: string };
   chosenAccountId: string; // existing account id, or "__new__"
   errorMsg?: string;
@@ -37,11 +51,14 @@ export function BulkUploadCard({ clientId, accounts }: { clientId: string; accou
   const [analyzing, setAnalyzing] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  function updateRow(id: number, patch: Partial<Row>) {
+    setRows((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)));
+  }
+
   async function analyze() {
     setAnalyzing(true);
-    setRows(files.map((f) => ({ fileName: f.name, status: "analyzing", chosenAccountId: "" })));
-    const results: Row[] = [];
-    for (const file of files) {
+    setRows(files.map((f, i) => ({ id: i, fileName: f.name, status: "analyzing", chosenAccountId: "" })));
+    for (const [i, file] of files.entries()) {
       try {
         const fileBase64 = await fileToBase64(file);
         const res = await fetch("/api/ai/extract-statement", {
@@ -58,36 +75,43 @@ export function BulkUploadCard({ clientId, accounts }: { clientId: string; accou
           { numeroCuenta: extraction.numeroCuenta, custodioDetectado: extraction.custodioDetectado },
           accounts,
         );
-        results.push({
-          fileName: file.name,
-          status: "ready",
-          extraction,
-          chosenAccountId: matched ?? "__new__",
-        });
+        updateRow(i, { status: "ready", extraction, chosenAccountId: matched ?? "__new__" });
       } catch (e) {
-        results.push({ fileName: file.name, status: "error", chosenAccountId: "", errorMsg: (e as Error).message });
+        updateRow(i, { status: "error", errorMsg: (e as Error).message });
       }
-      setRows([...results, ...files.slice(results.length).map((f) => ({ fileName: f.name, status: "analyzing" as const, chosenAccountId: "" }))]);
     }
     setAnalyzing(false);
   }
 
   async function saveAll() {
     setSaving(true);
+    // Accounts created earlier in this same batch: two months from a custodian the
+    // client didn't have yet used to create two separate accounts.
+    const created: CustodianMatchAccount[] = [];
     for (const row of rows) {
       if (row.status !== "ready" || !row.extraction) continue;
-      setRows((prev) => prev.map((r) => (r.fileName === row.fileName ? { ...r, status: "saving" } : r)));
+      const ex = row.extraction;
+      updateRow(row.id, { status: "saving" });
       try {
-        if (row.chosenAccountId === "__new__") {
-          await createAccountAndSaveSnapshot(clientId, row.extraction.custodioDetectado || "Nueva cuenta", row.extraction);
-        } else {
-          await saveExtractedSnapshot(clientId, row.chosenAccountId, row.extraction);
+        let targetId = row.chosenAccountId;
+        if (targetId === "__new__") {
+          targetId = matchAccountByCustodian({ numeroCuenta: ex.numeroCuenta, custodioDetectado: ex.custodioDetectado }, created) ?? "__new__";
         }
-        setRows((prev) => prev.map((r) => (r.fileName === row.fileName ? { ...r, status: "saved" } : r)));
-      } catch (e) {
-        setRows((prev) =>
-          prev.map((r) => (r.fileName === row.fileName ? { ...r, status: "error", errorMsg: (e as Error).message } : r)),
-        );
+        const result =
+          targetId === "__new__"
+            ? await createAccountAndSaveSnapshot(clientId, ex.custodioDetectado || "Nueva cuenta", ex)
+            : await saveExtractedSnapshot(clientId, targetId, ex);
+        if (!result.ok) {
+          updateRow(row.id, { status: "error", errorMsg: result.error });
+          continue;
+        }
+        if (targetId === "__new__") {
+          const name = ex.custodioDetectado || "Nueva cuenta";
+          created.push({ id: result.accountId, label: name, custodian: name, accountNumber: ex.numeroCuenta ?? null });
+        }
+        updateRow(row.id, { status: "saved" });
+      } catch {
+        updateRow(row.id, { status: "error", errorMsg: "No se pudo guardar. Probá de nuevo." });
       }
     }
     setSaving(false);
@@ -122,68 +146,72 @@ export function BulkUploadCard({ clientId, accounts }: { clientId: string; accou
           style={{ background: "var(--panel-2)", border: "1px solid var(--brick)", color: "var(--brick)" }}
         >
           ⚠ Modo demo — no hay una clave de IA configurada (ANTHROPIC_API_KEY), así que estos son datos de ejemplo,
-          no una lectura real de los archivos. Revisá y corregí todo antes de guardar.
+          no una lectura real de los archivos. No se pueden guardar.
         </div>
       )}
 
       {rows.length > 0 && (
-        <table className="mt-4 w-full text-[12.5px]">
-          <thead>
-            <tr className="text-(--muted)">
-              <th className="text-left">Archivo</th>
-              <th className="text-left">Custodio / mes</th>
-              <th className="text-right">Valor</th>
-              <th className="text-left">Cuenta destino</th>
-              <th className="text-left">Estado</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr key={row.fileName} className="border-t border-(--line)">
-                <td className="py-1.5 text-(--paper)">{row.fileName}</td>
-                <td className="text-(--paper-dim)">
-                  {row.extraction
-                    ? `${row.extraction.custodioDetectado ?? "—"} · ${row.extraction.mes}` +
-                      (row.extraction.moneda && row.extraction.moneda !== "USD" ? ` · ${row.extraction.moneda}` : "")
-                    : "—"}
-                </td>
-                <td className="text-right font-mono text-(--paper-dim)">
-                  {row.extraction ? fmtCurrency(row.extraction.valorActual, row.extraction.moneda) : "—"}
-                </td>
-                <td>
-                  {row.status === "ready" ? (
-                    <select
-                      value={row.chosenAccountId}
-                      onChange={(e) =>
-                        setRows((prev) =>
-                          prev.map((r) => (r.fileName === row.fileName ? { ...r, chosenAccountId: e.target.value } : r)),
-                        )
-                      }
-                    >
-                      <option value="__new__">
-                        + Crear cuenta nueva{row.extraction?.custodioDetectado ? `: ${row.extraction.custodioDetectado}` : ""}
-                      </option>
-                      {accounts.map((a) => (
-                        <option key={a.id} value={a.id}>
-                          {a.label}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    "—"
-                  )}
-                </td>
-                <td className="text-(--muted)">
-                  {row.status === "error" ? <span className="text-(--brick)">{row.errorMsg}</span> : row.status}
-                </td>
+        <div className="mt-4 overflow-x-auto">
+          <table className="w-full text-[12.5px]">
+            <thead>
+              <tr className="text-(--muted)">
+                <th className="text-left">Archivo</th>
+                <th className="text-left">Custodio / mes</th>
+                <th className="text-right">Valor</th>
+                <th className="text-right">Depósitos año</th>
+                <th className="text-right">Rend. año</th>
+                <th className="text-left">Cuenta destino</th>
+                <th className="text-left">Estado</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {rows.map((row) => {
+                const ex = row.extraction;
+                const target = accounts.find((a) => a.id === row.chosenAccountId);
+                const replaces = !!ex && !!target && target.months.includes(ex.mes);
+                return (
+                  <tr key={row.id} className="border-t border-(--line)">
+                    <td className="py-1.5 text-(--paper)">{row.fileName}</td>
+                    <td className="text-(--paper-dim)">
+                      {ex
+                        ? `${ex.custodioDetectado ?? "—"} · ${ex.mes}` +
+                          (ex.numeroCuenta ? ` · ${ex.numeroCuenta}` : "") +
+                          (ex.moneda && ex.moneda !== "USD" ? ` · ${ex.moneda}` : "")
+                        : "—"}
+                    </td>
+                    <td className="text-right font-mono text-(--paper-dim)">{ex ? fmtCurrency(ex.valorActual, ex.moneda) : "—"}</td>
+                    <td className="text-right font-mono text-(--paper-dim)">{ex ? fmtCurrency(ex.flujosNetosYTD, ex.moneda) : "—"}</td>
+                    <td className="text-right font-mono text-(--paper-dim)">{ex ? fmtPct(ex.rentYTD) : "—"}</td>
+                    <td>
+                      {row.status === "ready" ? (
+                        <>
+                          <select value={row.chosenAccountId} onChange={(e) => updateRow(row.id, { chosenAccountId: e.target.value })}>
+                            <option value="__new__">+ Crear cuenta nueva{ex?.custodioDetectado ? `: ${ex.custodioDetectado}` : ""}</option>
+                            {accounts.map((a) => (
+                              <option key={a.id} value={a.id}>
+                                {a.label}
+                              </option>
+                            ))}
+                          </select>
+                          {replaces && <div className="text-[11px] font-semibold text-(--brick)">⚠ reemplaza {ex!.mes}</div>}
+                        </>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+                    <td className="text-(--muted)">
+                      {row.status === "error" ? <span className="text-(--brick)">{row.errorMsg}</span> : STATUS_LABEL[row.status]}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       )}
 
       {anyReady && (
-        <button type="button" className="mt-3.5" disabled={saving} onClick={saveAll}>
+        <button type="button" className="mt-3.5" disabled={saving || anyMock} onClick={saveAll}>
           {saving ? "Guardando…" : "Guardar todo"}
         </button>
       )}
