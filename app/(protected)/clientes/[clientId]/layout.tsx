@@ -1,5 +1,5 @@
-import { notFound, redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { notFound } from "next/navigation";
+import { requireUser } from "@/lib/supabase/server";
 import { ClientTabs } from "@/components/clients/client-tabs";
 import { BirthdayField } from "@/components/clients/birthday-field";
 import { HouseholdField } from "@/components/clients/household-field";
@@ -12,26 +12,15 @@ export default async function ClientLayout({
   params: Promise<{ clientId: string }>;
 }) {
   const { clientId } = await params;
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const { supabase } = await requireUser();
 
   // RLS scopes this to the current advisor — a client owned by someone else (or a
   // bad id) simply returns no row here, which we treat as not found.
-  const { data: client } = await supabase
-    .from("clients")
-    .select("id, name, fecha_nacimiento, household_label")
-    .eq("id", clientId)
-    .maybeSingle();
+  const [{ data: client }, { data: accounts }] = await Promise.all([
+    supabase.from("clients").select("id, name, fecha_nacimiento, household_label").eq("id", clientId).maybeSingle(),
+    supabase.from("accounts").select("id, label").eq("client_id", clientId).order("label"),
+  ]);
   if (!client) notFound();
-
-  const { data: accounts } = await supabase
-    .from("accounts")
-    .select("id, label")
-    .eq("client_id", clientId)
-    .order("label");
 
   return (
     <div>

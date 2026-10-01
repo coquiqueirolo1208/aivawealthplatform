@@ -1,6 +1,5 @@
-import { redirect } from "next/navigation";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { requireUser } from "@/lib/supabase/server";
 import { getAdvisorLogoUrl } from "@/lib/queries/advisor";
 
 const CARDS = [
@@ -27,11 +26,7 @@ const CARDS = [
 ] as const;
 
 export default async function HomePage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const { supabase, user } = await requireUser();
 
   // Only this advisor's own clients/prospects count toward "getting started" — shared
   // demo clients are visible to everyone, so they'd make the checklist look done

@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
-import { getAdvisorClientsWithSnapshots } from "@/lib/queries/portfolio";
+import { requireUser } from "@/lib/supabase/server";
+import { getClientWithSnapshots } from "@/lib/queries/portfolio";
 import {
   accountTrailing12m,
   computeCostsYTD,
@@ -28,14 +28,9 @@ export default async function AccountPage({
 }) {
   const { clientId, accountId } = await params;
   const { month: monthParam } = await searchParams;
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const { supabase } = await requireUser();
 
-  const clients = await getAdvisorClientsWithSnapshots(supabase, user.id);
-  const client = clients.find((c) => c.id === clientId);
+  const client = await getClientWithSnapshots(supabase, clientId);
   const account = client?.accounts.find((a) => a.id === accountId);
   if (!client || !account) redirect(`/clientes/${clientId}`);
 

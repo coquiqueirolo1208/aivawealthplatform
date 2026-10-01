@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { notFound } from "next/navigation";
+import { requireUser } from "@/lib/supabase/server";
 import { loadRadarData } from "@/lib/queries/radar";
 import { SearchableSectionList } from "@/components/office/searchable-section-list";
 
@@ -25,11 +25,7 @@ export default async function RadarSectionPage({ params }: { params: Promise<{ s
   const { section } = await params;
   if (!isSection(section)) notFound();
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const { supabase, user } = await requireUser();
 
   const data = await loadRadarData(supabase, user.id);
   const items =

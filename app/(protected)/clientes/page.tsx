@@ -1,17 +1,14 @@
-import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
-import { getAdvisorClientsWithSnapshots } from "@/lib/queries/portfolio";
+import { requireUser } from "@/lib/supabase/server";
+import { getAdvisorClientsWithLatestSnapshot } from "@/lib/queries/portfolio";
 import { latestMonth, toUsdValue } from "@/lib/finance";
 import { ClientList, type ClientRow } from "@/components/clients/client-list";
 
 export default async function ClientesPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const { supabase, user } = await requireUser();
 
-  const clients = await getAdvisorClientsWithSnapshots(supabase, user.id);
+  // The list only shows each client's current AUM, so it reads just the latest
+  // statement per account rather than every month of history.
+  const clients = await getAdvisorClientsWithLatestSnapshot(supabase, user.id);
   const rows: ClientRow[] = clients.map((c) => {
     let aum = 0;
     let any = false;

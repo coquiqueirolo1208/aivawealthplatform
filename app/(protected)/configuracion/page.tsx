@@ -1,15 +1,10 @@
-import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { requireUser } from "@/lib/supabase/server";
 import { getAdvisorLogoUrl, getAdvisorWeeklyEmailEnabled } from "@/lib/queries/advisor";
 import { AdvisorLogoCard } from "@/components/office/advisor-logo-card";
 import { WeeklyEmailToggle } from "@/components/office/weekly-email-toggle";
 
 export default async function ConfiguracionPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const { supabase, user } = await requireUser();
 
   const [logoUrl, weeklyEmailEnabled] = await Promise.all([
     getAdvisorLogoUrl(supabase, user.id),

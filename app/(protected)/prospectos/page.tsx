@@ -1,5 +1,4 @@
-import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { requireUser } from "@/lib/supabase/server";
 import { getProspectsForAdvisor } from "@/lib/queries/prospects";
 import { ProspectsKanban } from "@/components/clients/prospects-kanban";
 import { ProspectsStatTiles } from "@/components/clients/prospects-stat-tiles";
@@ -7,11 +6,7 @@ import { ExportExcelButton } from "@/components/clients/export-excel-button";
 import { ONBOARDING_FORM_URL } from "@/lib/constants";
 
 export default async function ProspectosPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const { supabase, user } = await requireUser();
 
   const prospects = await getProspectsForAdvisor(supabase, user.id);
   // Server Component, rendered fresh per request (no `use cache` / Cache Components

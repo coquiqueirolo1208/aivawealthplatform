@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
-import { getAdvisorClientsWithSnapshots, type AccountWithSnapshots } from "@/lib/queries/portfolio";
+import { requireUser } from "@/lib/supabase/server";
+import { getClientWithSnapshots, type AccountWithSnapshots } from "@/lib/queries/portfolio";
 import { getFunds, getModelPortfolio } from "@/lib/queries/reference";
 import { getBenchmarkLevels, getClientBenchmarkWeights } from "@/lib/queries/benchmark";
 import { getAdvisorLogoUrl } from "@/lib/queries/advisor";
@@ -60,17 +60,22 @@ function buildEvolutionSeries(accounts: AccountWithSnapshots[]): EvolutionSeries
 
 export default async function ConsolidadoPage({ params }: { params: Promise<{ clientId: string }> }) {
   const { clientId } = await params;
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const { supabase, user } = await requireUser();
 
-  const clients = await getAdvisorClientsWithSnapshots(supabase, user.id);
-  const client = clients.find((c) => c.id === clientId);
+  // Everything here depends only on clientId, so it all loads in one parallel round
+  // (it used to be ~9 awaits in sequence, after loading every client's history).
+  const [client, logoUrl, benchmarkLevels, benchmarkWeights, { data: documents }, tasks, notes, { data: riskProfileRow }] =
+    await Promise.all([
+      getClientWithSnapshots(supabase, clientId),
+      getAdvisorLogoUrl(supabase, user.id),
+      getBenchmarkLevels(supabase),
+      getClientBenchmarkWeights(supabase, clientId),
+      supabase.from("client_documents").select("id, tipo, estado, vencimiento, notas").eq("client_id", clientId),
+      getTasksForClient(supabase, clientId),
+      getNotesForClient(supabase, clientId),
+      supabase.from("risk_profiles").select("*").eq("client_id", clientId).maybeSingle(),
+    ]);
   if (!client) redirect("/clientes");
-
-  const logoUrl = await getAdvisorLogoUrl(supabase, user.id);
 
   // The consolidado view is always USD: each account's own snapshots convert using
   // that month's own rate, so FX movement across the period is captured correctly
@@ -114,21 +119,6 @@ export default async function ConsolidadoPage({ params }: { params: Promise<{ cl
   const todPendiente = computeTodPendienteAccounts(
     accs.map((a) => ({ accountId: a.id, accountLabel: a.label, titularidad: a.titularidad, todCompletado: a.todCompletado })),
   );
-
-  const benchmarkLevels = await getBenchmarkLevels(supabase);
-  const benchmarkWeights = await getClientBenchmarkWeights(supabase, clientId);
-
-  const { data: documents } = await supabase
-    .from("client_documents")
-    .select("id, tipo, estado, vencimiento, notas")
-    .eq("client_id", clientId);
-  const tasks = await getTasksForClient(supabase, clientId);
-  const notes = await getNotesForClient(supabase, clientId);
-  const { data: riskProfileRow } = await supabase
-    .from("risk_profiles")
-    .select("*")
-    .eq("client_id", clientId)
-    .maybeSingle();
 
   let riskDeviation: {
     profileLabel: string;

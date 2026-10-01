@@ -7,11 +7,15 @@ const PROFILE_KEYS = ["conservador", "balanceado", "dinamico"] as const;
 
 export default async function PortafoliosPage() {
   const supabase = await createClient();
-  const fondosDb = await getFunds(supabase);
+  // Funds and the three model portfolios are independent — load them together
+  // instead of one after another.
+  const [fondosDb, portfolios] = await Promise.all([
+    getFunds(supabase),
+    Promise.all(PROFILE_KEYS.map((key) => getModelPortfolio(supabase, key))),
+  ]);
 
   const views: ModelPortfolioView[] = [];
-  for (const key of PROFILE_KEYS) {
-    const portfolio = await getModelPortfolio(supabase, key);
+  for (const portfolio of portfolios) {
     if (!portfolio) continue;
     const metrics = pmPortfolioMetricsFull(portfolio, fondosDb);
     const sectionWeights = computePMTargetWeights(portfolio) ?? {};

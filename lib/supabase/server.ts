@@ -1,3 +1,5 @@
+import { cache } from "react";
+import { redirect } from "next/navigation";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import type { Database } from "./database.types";
@@ -24,4 +26,27 @@ export async function createClient() {
       },
     },
   );
+}
+
+/**
+ * One Supabase client per request, shared by the root layout, nested layouts and the
+ * page. Query helpers wrapped in React `cache()` are keyed by their arguments, so
+ * they only deduplicate when every caller passes this same client instance.
+ */
+export const getRequestSupabase = cache(createClient);
+
+/** The signed-in user, looked up once per request (each layout and page used to call Auth on its own). */
+export const getCurrentUser = cache(async () => {
+  const supabase = await getRequestSupabase();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  return user;
+});
+
+/** For protected pages: the signed-in user plus the shared client, or a redirect to /login. */
+export async function requireUser() {
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
+  return { user, supabase: await getRequestSupabase() };
 }

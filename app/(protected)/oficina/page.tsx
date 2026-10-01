@@ -1,6 +1,5 @@
-import { redirect } from "next/navigation";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { requireUser } from "@/lib/supabase/server";
 import { getAdvisorClientsWithSnapshots } from "@/lib/queries/portfolio";
 import { getPendingTasksForAdvisor } from "@/lib/queries/tasks";
 import { getClientBirthdays } from "@/lib/queries/clients";
@@ -25,13 +24,32 @@ import { currentMonthIso, todayIso } from "@/lib/dates";
 const MAX_UPCOMING_TASKS = 5;
 
 export default async function OficinaPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const { supabase, user } = await requireUser();
+  const currentYYYYMM = currentMonthIso();
+  const currentYear = currentYYYYMM.slice(0, 4);
+  const yearStartIso = `${currentYear}-01-01`;
+  const today = todayIso();
 
-  const clientsRaw = await getAdvisorClientsWithSnapshots(supabase, user.id);
+  // All independent — one parallel round instead of six awaits in a row.
+  const [clientsRaw, { data: demoMetrics }, { count: newClientsYtd }, { count: newProspectsYtd }, pendingTasks, radarData, clientBirthdays] =
+    await Promise.all([
+      getAdvisorClientsWithSnapshots(supabase, user.id),
+      // Comisiones del trimestre isn't derivable from client/account data at all —
+      // shown as a fixed reference figure from the seeded demo dataset, not editable.
+      supabase.from("advisor_metrics").select("comisiones_q").eq("is_demo", true).maybeSingle(),
+      // "Nuevos (YTD)" scopes the same way as the totals below — every client/prospect
+      // visible to this advisor (including shared demo rows), just filtered by created_at.
+      supabase
+        .from("clients")
+        .select("id", { count: "exact", head: true })
+        .or(`advisor_id.eq.${user.id},is_demo.eq.true`)
+        .gte("created_at", yearStartIso),
+      supabase.from("prospects").select("id", { count: "exact", head: true }).eq("advisor_id", user.id).gte("created_at", yearStartIso),
+      getPendingTasksForAdvisor(supabase, user.id),
+      loadRadarData(supabase, user.id),
+      getClientBirthdays(supabase, user.id),
+    ]);
+
   // Every office-wide figure (AUM, growth, flows, performers) is USD — convert each
   // account's snapshots using their own month's rate before any of it is summed.
   const clients = clientsRaw.map((c) => ({
@@ -43,8 +61,6 @@ export default async function OficinaPage() {
   // snapshots (no more manually-entered office metrics to keep in sync).
   const aumTotal = clients.reduce((s, c) => s + (clientTrailing12m(c.accounts).aum ?? 0), 0);
 
-  const currentYYYYMM = currentMonthIso();
-  const currentYear = currentYYYYMM.slice(0, 4);
   const baselineMonth = `${Number(currentYear) - 1}-12`;
   let aumInicioAno = 0;
   let hasBaseline = false;
@@ -99,26 +115,6 @@ export default async function OficinaPage() {
     "monthly",
   );
 
-  // Comisiones del trimestre isn't derivable from client/account data at all —
-  // shown as a fixed reference figure from the seeded demo dataset, not editable.
-  const { data: demoMetrics } = await supabase
-    .from("advisor_metrics")
-    .select("comisiones_q")
-    .eq("is_demo", true)
-    .maybeSingle();
-
-  // "Nuevos (YTD)" scopes the same way as the totals above — every client/prospect
-  // visible to this advisor (including shared demo rows), just filtered by created_at.
-  const yearStartIso = `${currentYear}-01-01`;
-  const [{ count: newClientsYtd }, { count: newProspectsYtd }] = await Promise.all([
-    supabase
-      .from("clients")
-      .select("id", { count: "exact", head: true })
-      .or(`advisor_id.eq.${user.id},is_demo.eq.true`)
-      .gte("created_at", yearStartIso),
-    supabase.from("prospects").select("id", { count: "exact", head: true }).eq("advisor_id", user.id).gte("created_at", yearStartIso),
-  ]);
-
   const performers = clients
     .map((c) => ({ id: c.id, name: c.name, ...clientTrailing12m(c.accounts) }))
     .filter((p) => p.perf12m != null)
@@ -128,11 +124,7 @@ export default async function OficinaPage() {
 
   // Overdue tasks are already covered by Radar's "Tareas vencidas" — this list only
   // needs the ones still ahead, so the two sections don't repeat the same items.
-  const today = todayIso();
-  const upcomingTasks = (await getPendingTasksForAdvisor(supabase, user.id)).filter((t) => !t.due || t.due >= today);
-  const radarData = await loadRadarData(supabase, user.id);
-
-  const clientBirthdays = await getClientBirthdays(supabase, user.id);
+  const upcomingTasks = pendingTasks.filter((t) => !t.due || t.due >= today);
   const upcomingBirthdays = computeUpcomingBirthdays(
     clientBirthdays.map((c) => ({ id: c.id, name: c.name, fechaNacimiento: c.fechaNacimiento })),
     today,

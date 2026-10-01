@@ -551,7 +551,12 @@ export interface Database {
         Relationships: [];
       };
     };
-    Views: Record<string, never>;
+    Views: {
+      latest_snapshots: {
+        Row: Database["public"]["Tables"]["snapshots"]["Row"];
+        Relationships: [];
+      };
+    };
     Functions: Record<string, never>;
     Enums: Record<string, never>;
   };

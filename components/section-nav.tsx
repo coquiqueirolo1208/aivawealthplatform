@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -10,7 +11,8 @@ const SECTIONS = [
   { href: "/research", label: "Research" },
 ] as const;
 
-export function SectionNav({ alertCount = 0 }: { alertCount?: number }) {
+/** `oficinaBadge` is a server-rendered slot (the streamed Radar alert count). */
+export function SectionNav({ oficinaBadge }: { oficinaBadge?: ReactNode }) {
   const pathname = usePathname();
   if (pathname === "/" || pathname === "/login") return null;
 
@@ -34,14 +36,7 @@ export function SectionNav({ alertCount = 0 }: { alertCount?: number }) {
               style={{ background: "var(--ink)", opacity: active ? 1 : 0.55 }}
             />
             {s.label}
-            {s.href === "/oficina" && alertCount > 0 && (
-              <span
-                className="ml-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1 font-mono text-[10.5px] font-bold"
-                style={{ background: "var(--brick)", color: "#fff" }}
-              >
-                {alertCount > 99 ? "99+" : alertCount}
-              </span>
-            )}
+            {s.href === "/oficina" && oficinaBadge}
           </Link>
         );
       })}

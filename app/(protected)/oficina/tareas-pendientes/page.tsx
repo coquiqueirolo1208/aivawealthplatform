@@ -1,16 +1,11 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { requireUser } from "@/lib/supabase/server";
 import { getPendingTasksForAdvisor } from "@/lib/queries/tasks";
 import { SearchableSectionList } from "@/components/office/searchable-section-list";
 import { todayIso } from "@/lib/dates";
 
 export default async function TareasPendientesPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const { supabase, user } = await requireUser();
 
   // Same "not overdue" filter as the capped list on Mi Oficina — overdue tasks
   // live in Radar's "Tareas vencidas" instead.
