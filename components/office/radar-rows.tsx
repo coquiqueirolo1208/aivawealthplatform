@@ -146,6 +146,19 @@ export function FondeoRow({ f }: { f: RadarData["fondeoPendiente"][number] }) {
   );
 }
 
+export function ConcentracionRow({ c }: { c: RadarData["concentraciones"][number] }) {
+  return (
+    <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2.5 py-1.5 text-[13px]">
+      <span>
+        <ClientLink clientId={c.clientId} clientName={c.clientName} /> — {c.activo}
+      </span>
+      <span className="text-[11px] text-(--paper-dim)">
+        {c.pct.toFixed(1)}% de la cartera · {fmtUSD(c.valor)}
+      </span>
+    </div>
+  );
+}
+
 export function RiesgoRow({ r }: { r: RadarData["riesgo"][number] }) {
   return (
     <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2.5 py-1.5 text-[13px]">

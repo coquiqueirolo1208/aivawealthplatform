@@ -37,12 +37,20 @@ function weightForMonth(weightsByMonth: Record<string, number>, month: string): 
   return best !== null ? weightsByMonth[best] : DEFAULT_MSCI_WEIGHT_PCT;
 }
 
-/** `weightsByMonth`: month ("YYYY-MM") -> MSCI World share (0-100) in effect from that month on. */
+/**
+ * `weightsByMonth`: month ("YYYY-MM") -> MSCI World share (0-100) in effect from that month on.
+ * `asOfMonth`: compute as of this month (the portfolio's latest statement) instead of the
+ * newest level loaded — otherwise a portfolio through July was compared against a
+ * benchmark through August.
+ */
 export function computeBenchmarkReturns(
   benchmarkLevels: Record<string, BenchmarkLevel>,
   weightsByMonth: Record<string, number> = {},
+  asOfMonth?: string | null,
 ): BenchmarkReturns | null {
-  const months = Object.keys(benchmarkLevels).sort();
+  const months = Object.keys(benchmarkLevels)
+    .sort()
+    .filter((m) => !asOfMonth || m <= asOfMonth);
   if (!months.length) return null;
   const latest = months[months.length - 1];
   const prevMonth = prevMonthKey(latest);

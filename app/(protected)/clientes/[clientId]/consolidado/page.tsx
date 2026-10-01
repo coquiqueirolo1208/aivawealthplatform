@@ -409,6 +409,7 @@ export default async function ConsolidadoPage({ params }: { params: Promise<{ cl
             clientId={clientId}
             portfolioMTD={mtdBlend}
             portfolioYTD={ytdBlend}
+            portfolioMonth={withData.reduce<string | null>((max, x) => (x.month && (!max || x.month > max) ? x.month : max), null)}
             benchmarkLevels={benchmarkLevels}
             weightsByMonth={benchmarkWeights}
           />

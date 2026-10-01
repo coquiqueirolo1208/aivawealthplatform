@@ -2,27 +2,34 @@
 
 import { useState } from "react";
 import { computeBenchmarkReturns, DEFAULT_MSCI_WEIGHT_PCT, type BenchmarkLevel } from "@/lib/finance/benchmark";
-import { fmtPct, pctClass } from "@/lib/format";
+import { fmtPct, pctColor } from "@/lib/format";
 import { saveBenchmarkLevel, deleteBenchmarkLevel, saveClientBenchmarkWeight, deleteClientBenchmarkWeight } from "@/lib/actions/benchmark";
+import { SubmitButton } from "@/components/ui/submit-button";
+import { useArmedConfirm } from "@/components/ui/use-armed-confirm";
 
 export function BenchmarkCard({
   clientId,
   portfolioMTD,
   portfolioYTD,
+  portfolioMonth,
   benchmarkLevels,
   weightsByMonth,
 }: {
   clientId: string;
   portfolioMTD: number | null;
   portfolioYTD: number | null;
+  /** Month the portfolio figures are as of (newest statement) — the benchmark is computed as of the same month. */
+  portfolioMonth: string | null;
   benchmarkLevels: Record<string, BenchmarkLevel>;
   weightsByMonth: Record<string, number>;
 }) {
   const [showLevels, setShowLevels] = useState(false);
   const [showWeights, setShowWeights] = useState(false);
   const [msciInput, setMsciInput] = useState("");
+  const confirm = useArmedConfirm<string>();
 
-  const bench = computeBenchmarkReturns(benchmarkLevels, weightsByMonth);
+  const bench = computeBenchmarkReturns(benchmarkLevels, weightsByMonth, portfolioMonth);
+  const monthMismatch = !!bench && !!portfolioMonth && bench.latestMonth !== portfolioMonth;
   const levelMonths = Object.keys(benchmarkLevels).sort();
   const weightMonths = Object.keys(weightsByMonth).sort();
   const latestWeightPct = weightMonths.length ? weightsByMonth[weightMonths[weightMonths.length - 1]] : DEFAULT_MSCI_WEIGHT_PCT;
@@ -55,10 +62,17 @@ export function BenchmarkCard({
           comparar.
         </div>
       ) : (
+        <>
+        {monthMismatch && (
+          <div className="mt-3 text-[12px] font-semibold text-(--brick)">
+            ⚠ No hay niveles del benchmark para {portfolioMonth}: se compara contra {bench.latestMonth}. Cargá{" "}
+            {portfolioMonth} para comparar el mismo período.
+          </div>
+        )}
         <table className="mt-3 w-full text-[13px]">
           <thead>
             <tr className="text-(--muted)">
-              <th className="text-left"></th>
+              <th className="text-left font-normal">{portfolioMonth ? `a ${portfolioMonth}` : ""}</th>
               <th className="text-right">MTD</th>
               <th className="text-right">YTD</th>
             </tr>
@@ -66,10 +80,10 @@ export function BenchmarkCard({
           <tbody>
             <tr className="border-t border-(--line)">
               <td className="py-2 text-(--paper)">Tu cartera</td>
-              <td className="text-right font-mono" style={{ color: pctClass(portfolioMTD) === "pos" ? "var(--teal)" : "var(--brick)" }}>
+              <td className="text-right font-mono" style={{ color: pctColor(portfolioMTD) }}>
                 {fmtPct(portfolioMTD)}
               </td>
-              <td className="text-right font-mono" style={{ color: pctClass(portfolioYTD) === "pos" ? "var(--teal)" : "var(--brick)" }}>
+              <td className="text-right font-mono" style={{ color: pctColor(portfolioYTD) }}>
                 {fmtPct(portfolioYTD)}
               </td>
             </tr>
@@ -89,6 +103,7 @@ export function BenchmarkCard({
             </tr>
           </tbody>
         </table>
+        </>
       )}
 
       {showWeights && (
@@ -145,7 +160,7 @@ export function BenchmarkCard({
               % Bloomberg Agg:{" "}
               <span className="font-mono text-(--paper)">{msciPreview == null ? "—" : `${100 - msciPreview}%`}</span>
             </div>
-            <button type="submit">Guardar</button>
+            <SubmitButton>Guardar</SubmitButton>
           </form>
         </div>
       )}
@@ -160,9 +175,16 @@ export function BenchmarkCard({
                 style={{ background: "var(--panel-2)", border: "1px solid var(--line)", color: "var(--paper-dim)" }}
               >
                 {m}: MSCI {benchmarkLevels[m].msci ?? "—"} / Agg {benchmarkLevels[m].agg ?? "—"}
-                <button type="button" className="bg-transparent p-0 text-(--brick)" onClick={() => deleteBenchmarkLevel(m)}>
-                  ✕
-                </button>
+                {/* Levels are firm-wide (shared by every client and advisor), so deleting one asks first. */}
+                {confirm.armed === m ? (
+                  <button type="button" className="bg-(--brick) px-1.5 py-0 text-[10px]" onClick={() => confirm.ready() && deleteBenchmarkLevel(m)}>
+                    ¿Borrar para todos?
+                  </button>
+                ) : (
+                  <button type="button" className="bg-transparent p-0 text-(--brick)" onClick={() => confirm.arm(m)}>
+                    ✕
+                  </button>
+                )}
               </span>
             ))}
           </div>
@@ -179,7 +201,7 @@ export function BenchmarkCard({
               <span className="mb-1 block text-[11px] text-(--muted)">Nivel Bloomberg Agg</span>
               <input type="number" step="any" name="agg" />
             </label>
-            <button type="submit">Guardar</button>
+            <SubmitButton>Guardar</SubmitButton>
           </form>
         </div>
       )}

@@ -23,6 +23,19 @@ describe("computeBenchmarkReturns", () => {
     expect(r?.blendYTD).toBeCloseTo(expectedYtd, 4);
   });
 
+  it("computes as of the portfolio's month, ignoring levels loaded for later months", () => {
+    const levels = {
+      "2025-12": { msci: 100, agg: 100 },
+      "2026-05": { msci: 108, agg: 102 },
+      "2026-06": { msci: 110, agg: 101 },
+      "2026-07": { msci: 200, agg: 200 }, // must not leak into a June comparison
+    };
+    const asOfJune = computeBenchmarkReturns(levels, {}, "2026-06");
+    expect(asOfJune?.latestMonth).toBe("2026-06");
+    expect(asOfJune?.msciMTD).toBeCloseTo(1.85185, 4);
+    expect(computeBenchmarkReturns(levels)?.latestMonth).toBe("2026-07");
+  });
+
   it("applies each month's own weight when the mix changes mid-year", () => {
     const levels = {
       "2025-12": { msci: 100, agg: 100 },

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { RadarData } from "@/lib/finance/radar";
-import { AtrasoRow, ContactoRow, DocumentoRow, FondeoRow, RiesgoRow, TareaRow, TodRow, UsSitusRow } from "./radar-rows";
+import { AtrasoRow, ConcentracionRow, ContactoRow, DocumentoRow, FondeoRow, RiesgoRow, TareaRow, TodRow, UsSitusRow } from "./radar-rows";
 
 const MAX_ROWS = 5;
 
@@ -24,7 +24,8 @@ export function RadarPanel({ data }: { data: RadarData }) {
     data.contactoPendiente.length +
     data.fondeoPendiente.length;
 
-  if (total === 0) {
+  // Concentrations are informational and don't count as alerts, but still get shown.
+  if (total === 0 && data.concentraciones.length === 0) {
     return (
       <div className="rounded-[10px] border border-(--line) bg-(--panel) p-10 text-center text-[13.5px] text-(--muted)">
         Todo en orden — no encontramos atrasos, desvíos de riesgo, documentación vencida ni tareas vencidas en
@@ -145,6 +146,22 @@ export function RadarPanel({ data }: { data: RadarData }) {
             <ContactoRow key={i} c={c} />
           ))}
           <VerTodos section="contacto" count={data.contactoPendiente.length} />
+        </div>
+      )}
+
+      {data.concentraciones.length > 0 && (
+        <div className="rounded-[10px] border border-(--line) bg-(--panel) p-5">
+          <h3 className="mb-1 font-heading text-base font-semibold text-(--paper)">
+            Concentraciones ≥12% ({data.concentraciones.length})
+          </h3>
+          <div className="mb-2 text-[11px] text-(--muted)">
+            Posiciones que pesan 12% o más de la cartera total del cliente. Informativo — un fondo diversificado grande
+            puede estar bien; no suma al contador de alertas.
+          </div>
+          {data.concentraciones.slice(0, MAX_ROWS).map((c, i) => (
+            <ConcentracionRow key={i} c={c} />
+          ))}
+          <VerTodos section="concentracion" count={data.concentraciones.length} />
         </div>
       )}
     </div>

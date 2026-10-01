@@ -3,7 +3,18 @@
 import { useState } from "react";
 import type { RadarData } from "@/lib/finance/radar";
 import type { PendingTask } from "@/lib/queries/tasks";
-import { AtrasoRow, ContactoRow, DocumentoRow, FondeoRow, PendingTaskRow, RiesgoRow, TareaRow, TodRow, UsSitusRow } from "./radar-rows";
+import {
+  AtrasoRow,
+  ConcentracionRow,
+  ContactoRow,
+  DocumentoRow,
+  FondeoRow,
+  PendingTaskRow,
+  RiesgoRow,
+  TareaRow,
+  TodRow,
+  UsSitusRow,
+} from "./radar-rows";
 
 type Props =
   | { kind: "tareas"; items: RadarData["tareas"] }
@@ -14,6 +25,7 @@ type Props =
   | { kind: "tod"; items: RadarData["todPendiente"] }
   | { kind: "contacto"; items: RadarData["contactoPendiente"] }
   | { kind: "fondeo"; items: RadarData["fondeoPendiente"] }
+  | { kind: "concentracion"; items: RadarData["concentraciones"] }
   | { kind: "pendientes"; items: PendingTask[] };
 
 /** Every item shape here carries `clientName` — filters that field client-side, no round trip needed for these small (tens of rows) lists. */
@@ -32,6 +44,15 @@ export function SearchableSectionList(props: Props) {
   );
   const empty = <div className="p-6 text-center text-[13px] text-(--muted)">No hay resultados para esa búsqueda.</div>;
 
+  if (props.kind === "concentracion") {
+    const filtered = props.items.filter((c) => c.clientName.toLowerCase().includes(q) || c.activo.toLowerCase().includes(q));
+    return (
+      <div>
+        {searchBox}
+        {filtered.length === 0 ? empty : filtered.map((c, i) => <ConcentracionRow key={i} c={c} />)}
+      </div>
+    );
+  }
   if (props.kind === "tareas") {
     const filtered = props.items.filter((t) => (t.clientName ?? t.prospectName ?? "").toLowerCase().includes(q));
     return (

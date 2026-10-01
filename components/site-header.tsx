@@ -4,9 +4,13 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { LogoMark } from "./logo-mark";
-import { getClientCookie, setClientCookie } from "@/lib/client-cookies";
+import { setClientCookie } from "@/lib/client-cookies";
 import { createClient } from "@/lib/supabase/client";
 import { t, type Language } from "@/lib/i18n";
+
+// The es/en/pt selector was removed: it only ever translated these two header labels
+// and the rest of the app is hardcoded Spanish. lib/i18n.ts stays for a real translation pass.
+const lang: Language = "es";
 import { IaAdvisorModal } from "@/components/ia-advisor-modal";
 import { fmtDateTime } from "@/lib/format";
 
@@ -19,17 +23,12 @@ export function SiteHeader({
 }) {
   const router = useRouter();
   const [theme, setTheme] = useState<"light" | "dark">(initialTheme);
-  const [lang, setLang] = useState<Language>("es");
   const [now, setNow] = useState<string | null>(null);
   const [showAssistant, setShowAssistant] = useState(false);
 
   useEffect(() => {
-    // One-time hydration from browser-only sources (cookie, clock) unavailable during SSR.
-    const savedLang = getClientCookie("lang") as Language | null;
-    if (savedLang === "es" || savedLang === "en" || savedLang === "pt") {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time hydration from a cookie, not a render loop
-      setLang(savedLang);
-    }
+    // One-time hydration from the browser clock, unavailable during SSR.
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time hydration, not a render loop
     setNow(fmtDateTime(new Date().toISOString()));
   }, []);
 
@@ -38,11 +37,6 @@ export function SiteHeader({
     setTheme(next);
     document.documentElement.setAttribute("data-theme", next);
     setClientCookie("theme", next);
-  }
-
-  function changeLang(next: Language) {
-    setLang(next);
-    setClientCookie("lang", next);
   }
 
   async function handleSignOut() {
@@ -102,15 +96,6 @@ export function SiteHeader({
           </button>
         )}
         {userEmail && showAssistant && <IaAdvisorModal onClose={() => setShowAssistant(false)} />}
-        <select
-          value={lang}
-          onChange={(e) => changeLang(e.target.value as Language)}
-          className="mt-2 ml-1.5 rounded-md border border-(--line) bg-transparent px-4 py-2 text-[13px] font-semibold text-(--paper-dim)"
-        >
-          <option value="es">Español</option>
-          <option value="en">English</option>
-          <option value="pt">Português</option>
-        </select>
         <label className="ml-1.5 mt-2 inline-flex cursor-pointer items-center gap-1.5 align-middle">
           <span className="text-[11.5px] text-(--paper-dim)">
             {theme === "dark" ? t(lang, "dark_mode") : t(lang, "light_mode")}
